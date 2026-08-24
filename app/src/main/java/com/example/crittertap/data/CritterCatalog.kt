@@ -48,12 +48,8 @@ object CritterCatalog {
 
     operator fun get(id: String): Critter = byId.getValue(id)
 
-    /** A random critter that is not [current], so every change is visible. */
-    fun nextIndex(current: Int, random: Random = Random.Default): Int {
-        if (all.size < 2) return 0
-        val roll = random.nextInt(all.size - 1)
-        return if (roll >= current) roll + 1 else roll
-    }
+    /** A deck that deals every critter once per round. See [CritterShuffler]. */
+    fun shuffler(random: Random = Random.Default) = CritterShuffler(all.size, random)
 
     private fun critter(id: String, accent: Long) =
         Critter(id = id, assetPath = "animations/$id.json", accent = Color(accent))

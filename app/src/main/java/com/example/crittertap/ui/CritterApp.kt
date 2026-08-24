@@ -9,6 +9,8 @@ import androidx.navigation.NavController
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
+import com.example.crittertap.audio.AndroidSoundPlayer
+import com.example.crittertap.audio.AndroidSpeechEngine
 import com.example.crittertap.audio.CritterVoice
 import com.example.crittertap.data.UiText
 import com.example.crittertap.settings.SettingsRepository
@@ -34,7 +36,9 @@ object Routes {
 fun CritterApp() {
     val context = LocalContext.current
     val settings = remember { SettingsRepository(context) }
-    val voice = remember { CritterVoice(context) }
+    val voice = remember {
+        CritterVoice(AndroidSpeechEngine(context), AndroidSoundPlayer(context))
+    }
     val navController = rememberSwipeDismissableNavController()
 
     DisposableEffect(voice) {

@@ -196,10 +196,12 @@ def owl():
                      transform(pos=(x, -22)), name="eye-disc")
 
     return [
-        filled(triangle(34, 40), "#f0902a",
-               transform(pos=(0, 62), rotation=180), name="beak"),
+        # Between and just below the eye discs, which meet at x=0 - not down on
+        # the belly, where it was.
+        filled(triangle(38, 42), "#f0902a",
+               transform(pos=(0, -24), rotation=180), name="beak"),
         disc_eye(-48), disc_eye(48),
-        filled(ellipse(120, 118, (0, 62)), "#c9a273", name="belly"),
+        filled(ellipse(120, 96, (0, 56)), "#c9a273", name="belly"),
         filled(ellipse(200, 196), body, name="body"),
         filled(ellipse(60, 116, (0, 46)), "#6f4728",
                wiggle((-78, 10), base_rot=12, amp=10, period=28), name="wing"),

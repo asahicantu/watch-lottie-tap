@@ -22,23 +22,9 @@ class CritterCatalogTest {
     }
 
     @Test
-    fun `nextIndex never returns the critter already on screen`() {
-        val random = Random(20260824)
-        CritterCatalog.all.indices.forEach { current ->
-            repeat(100) {
-                val next = CritterCatalog.nextIndex(current, random)
-                assertNotEquals(current, next)
-                assertTrue(next in CritterCatalog.all.indices)
-            }
-        }
-    }
-
-    @Test
-    fun `nextIndex can reach every other critter`() {
-        val random = Random(7)
-        val seen = (0 until 6000)
-            .map { CritterCatalog.nextIndex(0, random) }
-            .toSet()
-        assertEquals(CritterCatalog.all.indices.drop(1).toSet(), seen)
+    fun `the catalog hands out a working deck`() {
+        val deck = CritterCatalog.shuffler(Random(4))
+        val round = CritterCatalog.all.indices.map { deck.next() }
+        assertEquals(CritterCatalog.all.indices.toSet(), round.toSet())
     }
 }

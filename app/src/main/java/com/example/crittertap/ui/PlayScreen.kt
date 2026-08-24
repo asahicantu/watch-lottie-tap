@@ -1,6 +1,10 @@
 package com.example.crittertap.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.draw.scale
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -30,10 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,6 +52,7 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.crittertap.audio.CritterVoice
 import com.example.crittertap.data.Critter
 import com.example.crittertap.data.CritterCatalog
+import com.example.crittertap.data.CritterShuffler
 import com.example.crittertap.data.CritterText
 import com.example.crittertap.data.CritterTexts
 import com.example.crittertap.data.Language
@@ -83,26 +87,31 @@ fun PlayScreen(
     modifier: Modifier = Modifier,
     voiceStatus: CritterVoice.Status = CritterVoice.Status.Ready,
 ) {
+    val context = LocalContext.current
     val critters = CritterCatalog.all
-    var index by rememberSaveable { mutableIntStateOf(CritterCatalog.nextIndex(-1)) }
+    val deck = rememberSaveable(saver = CritterShuffler.saver(critters.size)) {
+        CritterCatalog.shuffler()
+    }
+    var index by rememberSaveable { mutableIntStateOf(deck.next()) }
     var interactions by rememberSaveable { mutableIntStateOf(0) }
     val critter = critters[index]
     val text = CritterTexts.of(critter.id, language)
 
-    val haptics = LocalHapticFeedback.current
+    val haptics = remember(context) { CritterHaptics(context) }
     val focusRequester = remember { FocusRequester() }
     var rotaryAccumulator by remember { mutableFloatStateOf(0f) }
 
     fun speak() {
         interactions++
-        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        haptics.poke()
         onCritterShown(critter, text)
     }
 
-    fun show(next: Int) {
+    fun show(next: Int, fromDeck: Boolean = true) {
+        if (!fromDeck) deck.jumpTo(next)
         index = next
         interactions++
-        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        haptics.arrive()
         onCritterShown(critters[next], CritterTexts.of(critters[next].id, language))
     }
 
@@ -123,7 +132,7 @@ fun PlayScreen(
                 if (steps != 0) {
                     rotaryAccumulator -= steps * ROTARY_STEP_PIXELS
                     val size = critters.size
-                    show(((index + steps) % size + size) % size)
+                    show(((index + steps) % size + size) % size, fromDeck = false)
                 }
                 true
             }
@@ -132,7 +141,7 @@ fun PlayScreen(
             .pointerInput(critters, language) {
                 detectTapGestures(
                     onTap = { speak() },
-                    onDoubleTap = { show(CritterCatalog.nextIndex(index)) },
+                    onDoubleTap = { show(deck.next()) },
                 )
             },
         contentAlignment = Alignment.Center,
@@ -140,6 +149,7 @@ fun PlayScreen(
         CritterStage(
             critter = critter,
             text = text,
+            reaction = interactions,
             hint = when (interactions) {
                 0 -> strings.tapHint
                 1 -> strings.doubleTapHint
@@ -179,7 +189,12 @@ fun PlayScreen(
  * it goes away.
  */
 @Composable
-private fun CritterStage(critter: Critter, text: CritterText, hint: String?) {
+private fun CritterStage(
+    critter: Critter,
+    text: CritterText,
+    hint: String?,
+    reaction: Int,
+) {
     val composition by rememberLottieComposition(
         LottieCompositionSpec.Asset(critter.assetPath),
     )
@@ -196,12 +211,35 @@ private fun CritterStage(critter: Critter, text: CritterText, hint: String?) {
         label = "labelAlpha",
     )
 
+    // Presses in, then springs back past its resting size: the critter reacts
+    // to being poked rather than looping on regardless.
+    val squash = remember { Animatable(1f) }
+    LaunchedEffect(reaction) {
+        if (reaction <= 0) return@LaunchedEffect
+        squash.snapTo(0.86f)
+        squash.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow,
+            ),
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         LottieAnimation(
             composition = composition,
             progress = { progress },
             modifier = Modifier
                 .fillMaxWidth(ANIMATION_FRACTION)
+                .aspectRatio(1f)
+                .scale(squash.value),
+        )
+        SparkleBurst(
+            trigger = reaction,
+            color = critter.accent,
+            modifier = Modifier
+                .fillMaxWidth(ANIMATION_FRACTION * 1.5f)
                 .aspectRatio(1f),
         )
         Column(

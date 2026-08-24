@@ -18,12 +18,31 @@ animal, then the noise the animal makes. **Thirty** critters, in **English** or
 | Gesture | What happens |
 | --- | --- |
 | **Single tap** | Speaks the description ("A fox. It is clever and very quick.") then the noise ("Yip! Yip!") |
-| **Double tap** | Brings on the next critter — a random one, never the same twice running — and introduces it |
+| **Double tap** | Deals the next critter from a shuffled round and introduces it |
 | **Rotating bezel / crown** | Steps through the catalog in order |
+
+Every touch also presses the critter in and springs it back, throws a ring of
+stars outwards, and buzzes — a single firm click for a tap, a double pulse when
+a new critter arrives. Without that, the only feedback is a sound, which a small
+child may not connect to their own finger.
 
 A single tap waits out the system double-tap timeout (~300 ms) before it fires;
 that is what makes the two gestures distinguishable and is normal for any
-double-tap UI.
+double-tap UI. It is also the main reason this is a toy for a child who can
+already tap deliberately — reliable double-tapping is usually a 4-to-5-year-old
+skill, not a 2-year-old one.
+
+### How the next critter is picked
+
+Not by rolling a die. Uniform random feels wrong in practice — a child meets the
+cat three times in a dozen taps and never meets the giraffe. [`CritterShuffler`]
+deals from a shuffled deck instead: **a round is every critter exactly once**,
+and only when the round runs out is a new one shuffled. The card that opens a
+new round is swapped if it would repeat the one that closed the last, so a
+double tap never appears to do nothing. Browsing with the bezel marks that
+critter as dealt too, so the round stays honest.
+
+[`CritterShuffler`]: app/src/main/java/com/example/crittertap/data/CritterShuffler.kt
 
 ## The critters
 
@@ -61,6 +80,12 @@ distributing it.
 
 ```bash
 ./gradlew :app:testDebugUnitTest
+```
+
+The gesture tests need a running watch emulator or a connected watch:
+
+```bash
+./gradlew :app:connectedDebugAndroidTest
 ```
 
 ## Run on the emulator
@@ -190,9 +215,15 @@ and check each file's licence before shipping it.
 
 ## Sound
 
-`CritterVoice` speaks through Android text-to-speech in two parts: the
-description, a 280 ms silence, then the noise. Nothing is bundled, so the words
-always match the catalog and the chosen language.
+`CritterVoice` speaks in two parts: the description, a 280 ms silence, then the
+noise. Nothing is bundled, so the words always match the catalog and the chosen
+language.
+
+It talks to a `SpeechEngine` interface rather than to `TextToSpeech` directly.
+That split exists because **the Wear emulator ships no text-to-speech engine at
+all**, so the order of the two parts, the volume, the language switch and the
+recording hand-off cannot be confirmed by listening — `CritterVoiceTest` drives
+a fake engine and asserts them instead.
 
 To use real recordings instead, put them in `app/src/main/res/raw/` and point
 the catalog entry at one:
@@ -217,11 +248,17 @@ app/src/main/
     ui/SettingsScreen.kt             volume and language
     ui/theme/Theme.kt                black-background Wear Material 3 theme
     data/Critter.kt                  id, asset, accent colour, optional recording
-    data/CritterCatalog.kt           the list, and the no-repeat random picker
+    data/CritterCatalog.kt           the list of thirty
+    data/CritterShuffler.kt          the shuffled deck that deals them
     data/CritterText.kt              label / description / noise, per language
     data/Language.kt                 English, Spanish
     data/UiText.kt                   on-screen wording, per language
     settings/SettingsRepository.kt   volume + language, in shared preferences
-    audio/CritterVoice.kt            two-part speech, volume, locale, status
-app/src/test/…                       catalog and translation checks
+    audio/CritterVoice.kt            what to say and in what order (no android.*)
+    audio/SpeechEngine.kt            the engine + player interfaces it talks to
+    audio/AndroidSpeechEngine.kt     TextToSpeech and MediaPlayer behind them
+    ui/CritterHaptics.kt             the two buzzes
+    ui/SparkleBurst.kt               the stars thrown on each touch
+app/src/test/…                       catalog, translations, speech sequencing
+app/src/androidTest/…                what the two gestures mean
 ```
