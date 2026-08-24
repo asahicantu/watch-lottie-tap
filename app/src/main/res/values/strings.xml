@@ -1,0 +1,7 @@
+<resources>
+    <!-- Only the launcher label lives here: it is picked by the watch's system
+         locale, not by the language chosen inside the app. Everything shown
+         inside the app is in UiText.kt / CritterText.kt so it can follow that
+         in-app choice instead. -->
+    <string name="app_name">Tap a Critter</string>
+</resources>
