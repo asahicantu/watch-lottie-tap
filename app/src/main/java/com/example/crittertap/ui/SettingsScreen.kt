@@ -29,10 +29,15 @@ import com.example.crittertap.data.Language
 import com.example.crittertap.data.UiStrings
 import com.example.crittertap.data.UiText
 import com.example.crittertap.settings.SettingsRepository
+import com.example.crittertap.ui.theme.CritterColors
 import com.example.crittertap.ui.theme.CritterTapTheme
 import kotlin.math.roundToInt
 
-/** Volume and language. Swipe right to go back to the menu. */
+/**
+ * Screen for managing application settings like volume and language.
+ *
+ * Swipe right to go back to the menu.
+ */
 @Composable
 fun SettingsScreen(
     strings: UiStrings,
@@ -56,7 +61,7 @@ fun SettingsScreen(
                 text = strings.settings,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFFFD21F),
+                color = MaterialTheme.colorScheme.primary,
             )
         }
 
@@ -83,7 +88,7 @@ fun SettingsScreen(
                 Text(
                     text = strings.voiceMissing,
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFFD8974A),
+                    color = CritterColors.Warning,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
                 )
@@ -97,7 +102,7 @@ private fun SectionLabel(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelMedium,
-        color = Color(0xFF9BA1A9),
+        color = CritterColors.SectionLabel,
         modifier = Modifier.padding(top = 6.dp),
     )
 }
@@ -115,7 +120,7 @@ private fun VolumeRow(volume: Float, mutedLabel: String, onVolume: (Float) -> Un
         Text(
             text = if (volume <= 0f) mutedLabel else "${(volume * 100).roundToInt()}%",
             style = MaterialTheme.typography.bodyMedium,
-            color = if (volume <= 0f) Color(0xFF8A8F96) else Color.White,
+            color = if (volume <= 0f) CritterColors.Muted else Color.White,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(74.dp),
         )
@@ -130,7 +135,7 @@ private fun StepButton(symbol: String, enabled: Boolean, onClick: () -> Unit) {
         enabled = enabled,
         modifier = Modifier.size(44.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF23262B),
+            containerColor = CritterColors.Container,
             contentColor = Color.White,
         ),
     ) {
@@ -146,8 +151,8 @@ private fun ChoiceButton(label: String, selected: Boolean, onClick: () -> Unit) 
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (selected) Color(0xFF2E6B3E) else Color(0xFF23262B),
-            contentColor = if (selected) Color.White else Color(0xFFC9CED4),
+            containerColor = if (selected) CritterColors.SelectedContainer else CritterColors.Container,
+            contentColor = if (selected) Color.White else CritterColors.UnselectedContent,
         ),
     ) {
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {

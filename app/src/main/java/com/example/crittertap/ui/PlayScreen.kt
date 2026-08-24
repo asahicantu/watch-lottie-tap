@@ -23,10 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -44,6 +42,10 @@ import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.tooling.preview.devices.WearDevices
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -51,10 +53,7 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.crittertap.audio.CritterVoice
 import com.example.crittertap.data.Critter
-import com.example.crittertap.data.CritterCatalog
-import com.example.crittertap.data.CritterShuffler
 import com.example.crittertap.data.CritterText
-import com.example.crittertap.data.CritterTexts
 import com.example.crittertap.data.Language
 import com.example.crittertap.data.UiStrings
 import com.example.crittertap.data.UiText
@@ -72,11 +71,19 @@ private const val ANIMATION_FRACTION = 0.52f
 private val HINT_LINE_HEIGHT = 22.dp
 
 /**
- * The toy itself.
+ * The main play screen of the toy.
  *
+ * Interactions:
  * * **Tap** — says the critter's description, then the noise it makes.
  * * **Double tap** — brings on the next critter (and introduces it).
  * * **Rotating bezel / crown** — steps through the catalog in order.
+ *
+ * @param language The current [Language] selected in settings.
+ * @param strings The localized UI strings.
+ * @param onCritterShown Callback when a critter is presented to the user (usually for voice).
+ * @param modifier Modifier for the root container.
+ * @param voiceStatus The availability status of the text-to-speech engine.
+ * @param viewModel The ViewModel managing play state.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -86,39 +93,31 @@ fun PlayScreen(
     onCritterShown: (Critter, CritterText) -> Unit,
     modifier: Modifier = Modifier,
     voiceStatus: CritterVoice.Status = CritterVoice.Status.Ready,
+    viewModel: PlayViewModel = viewModel(factory = PlayViewModel.Factory)
 ) {
     val context = LocalContext.current
-    val critters = CritterCatalog.all
-    val deck = rememberSaveable(saver = CritterShuffler.saver(critters.size)) {
-        CritterCatalog.shuffler()
-    }
-    var index by rememberSaveable { mutableIntStateOf(deck.next()) }
-    var interactions by rememberSaveable { mutableIntStateOf(0) }
-    val critter = critters[index]
-    val text = CritterTexts.of(critter.id, language)
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val haptics = remember(context) { CritterHaptics(context) }
     val focusRequester = remember { FocusRequester() }
     var rotaryAccumulator by remember { mutableFloatStateOf(0f) }
 
     fun speak() {
-        interactions++
         haptics.poke()
-        onCritterShown(critter, text)
+        viewModel.onSpeakTriggered(onCritterShown)
     }
 
-    fun show(next: Int, fromDeck: Boolean = true) {
-        if (!fromDeck) deck.jumpTo(next)
-        index = next
-        interactions++
+    fun next() {
         haptics.arrive()
-        onCritterShown(critters[next], CritterTexts.of(critters[next].id, language))
+        viewModel.onNextCritterTriggered(onCritterShown)
     }
 
     // Introduce whatever is on screen when the player arrives, and again if the
     // language changes underneath them.
     LaunchedEffect(language) {
-        onCritterShown(critter, CritterTexts.of(critter.id, language))
+        viewModel.onLanguageChanged(language)
+        val currentState = viewModel.uiState.value
+        onCritterShown(currentState.critter, currentState.text)
         runCatching { focusRequester.requestFocus() }
     }
 
@@ -131,26 +130,26 @@ fun PlayScreen(
                 val steps = (rotaryAccumulator / ROTARY_STEP_PIXELS).roundToInt()
                 if (steps != 0) {
                     rotaryAccumulator -= steps * ROTARY_STEP_PIXELS
-                    val size = critters.size
-                    show(((index + steps) % size + size) % size, fromDeck = false)
+                    haptics.arrive()
+                    viewModel.onRotaryScroll(steps, onCritterShown)
                 }
                 true
             }
             .focusRequester(focusRequester)
             .focusable()
-            .pointerInput(critters, language) {
+            .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { speak() },
-                    onDoubleTap = { show(deck.next()) },
+                    onDoubleTap = { next() },
                 )
             },
         contentAlignment = Alignment.Center,
     ) {
         CritterStage(
-            critter = critter,
-            text = text,
-            reaction = interactions,
-            hint = when (interactions) {
+            critter = uiState.critter,
+            text = uiState.text,
+            reaction = uiState.interactions,
+            hint = when (uiState.interactions) {
                 0 -> strings.tapHint
                 1 -> strings.doubleTapHint
                 else -> null
@@ -170,7 +169,7 @@ fun PlayScreen(
             Text(
                 text = strings.noVoice,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF6E7480),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
         }
@@ -179,14 +178,10 @@ fun PlayScreen(
 }
 
 /**
+ * The stage where the critter animation and its label are displayed.
+ *
  * The animation sits dead centre of the watch face; the name and the gesture
  * hint hang off the bottom.
- *
- * The name is anchored to the bottom rather than stacked under the animation in
- * a column, because a column has to centre the *whole* block — animation plus
- * text — which pushes the animation itself well above the middle of the screen.
- * The hint keeps its line whether or not it is showing, so nothing shifts when
- * it goes away.
  */
 @Composable
 private fun CritterStage(
@@ -226,6 +221,8 @@ private fun CritterStage(
         )
     }
 
+    val contentDescription = "${text.label}: ${text.description}"
+
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         LottieAnimation(
             composition = composition,
@@ -233,7 +230,8 @@ private fun CritterStage(
             modifier = Modifier
                 .fillMaxWidth(ANIMATION_FRACTION)
                 .aspectRatio(1f)
-                .scale(squash.value),
+                .scale(squash.value)
+                .semantics { this.contentDescription = contentDescription },
         )
         SparkleBurst(
             trigger = reaction,
@@ -278,7 +276,7 @@ private fun HintLine(hint: String?) {
         Text(
             text = lastShown,
             style = MaterialTheme.typography.labelSmall,
-            color = Color(0xFF7C838C).copy(alpha = alpha),
+            color = MaterialTheme.colorScheme.outline.copy(alpha = alpha),
             textAlign = TextAlign.Center,
             maxLines = 1,
         )

@@ -5,6 +5,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
@@ -22,15 +23,9 @@ object Routes {
 }
 
 /**
- * Owns the voice and the settings for as long as the app is on screen, and
- * wires the three destinations together. Swiping right goes back, which is the
- * standard Wear OS gesture.
+ * The root Composable for the CritterTap application.
  *
- * Each destination reads `settings` and `voice` itself rather than being handed
- * values from out here: the navigation graph is built once, so anything read in
- * this scope and captured by a destination lambda would be frozen at whatever
- * it was on the first composition, and changing the language would leave the
- * screens in the old one.
+ * It manages the app's navigation, central settings, and voice engine lifecycle.
  */
 @Composable
 fun CritterApp() {
@@ -68,11 +63,13 @@ fun CritterApp() {
             )
         }
         composable(Routes.PLAY) {
+            val playViewModel: PlayViewModel = viewModel(factory = PlayViewModel.Factory)
             PlayScreen(
                 language = settings.language,
                 strings = UiText.of(settings.language),
                 voiceStatus = voice.status,
                 onCritterShown = voice::say,
+                viewModel = playViewModel
             )
         }
         composable(Routes.SETTINGS) {

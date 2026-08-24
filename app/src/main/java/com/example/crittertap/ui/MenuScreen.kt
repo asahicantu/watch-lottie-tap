@@ -30,6 +30,7 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.crittertap.data.Language
 import com.example.crittertap.data.UiStrings
 import com.example.crittertap.data.UiText
+import com.example.crittertap.ui.theme.CritterColors
 import com.example.crittertap.ui.theme.CritterTapTheme
 
 /**
@@ -60,7 +61,7 @@ fun MenuScreen(
                 text = strings.appTitle,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFFFD21F),
+                color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
@@ -68,7 +69,7 @@ fun MenuScreen(
         item {
             MenuButton(
                 label = strings.play,
-                container = Color(0xFF2E6B3E),
+                container = CritterColors.SelectedContainer,
                 content = Color.White,
                 onClick = onPlay,
             )
@@ -76,8 +77,8 @@ fun MenuScreen(
         item {
             MenuButton(
                 label = strings.settings,
-                container = Color(0xFF23262B),
-                content = Color(0xFFE6E9ED),
+                container = CritterColors.Container,
+                content = CritterColors.UnselectedContent,
                 onClick = onSettings,
             )
         }

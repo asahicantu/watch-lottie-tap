@@ -98,7 +98,12 @@ class AndroidSpeechEngine(context: Context) : SpeechEngine {
     }
 }
 
-/** [SoundPlayer] backed by MediaPlayer, kept on the main thread. */
+/**
+ * Implementation of [SoundPlayer] backed by Android's [MediaPlayer].
+ *
+ * All operations are kept on the main thread to simplify synchronization with the UI
+ * and prevent concurrent access issues.
+ */
 class AndroidSoundPlayer(context: Context) : SoundPlayer {
 
     private val appContext = context.applicationContext

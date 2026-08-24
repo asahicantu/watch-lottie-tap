@@ -28,6 +28,9 @@ class CritterShuffler(
     var current: Int = -1
         private set
 
+    /** The state of the deck, for saving and restoring. */
+    val state: List<Int> get() = listOf(current) + remaining
+
     init {
         require(size > 0) { "a catalog needs at least one critter" }
     }
@@ -53,6 +56,13 @@ class CritterShuffler(
     /** How many critters are left before the deck is reshuffled. */
     val remainingInRound: Int get() = remaining.size
 
+    /** Replaces the deck's state with [value]. */
+    fun restore(value: List<Int>) {
+        current = value.first()
+        remaining.clear()
+        remaining.addAll(value.drop(1))
+    }
+
     private fun refill() {
         val round = (0 until size).shuffled(random).toMutableList()
         // Never open a new round with the critter that closed the last one.
@@ -63,17 +73,11 @@ class CritterShuffler(
         remaining.addAll(round)
     }
 
-    private fun restore(state: List<Int>) {
-        current = state.first()
-        remaining.clear()
-        remaining.addAll(state.drop(1))
-    }
-
     companion object {
         /** Survives the watch killing and restoring the play screen. */
         fun saver(size: Int, random: Random = Random.Default): Saver<CritterShuffler, Any> =
             listSaver(
-                save = { listOf(it.current) + it.remaining },
+                save = { it.state },
                 restore = { state -> CritterShuffler(size, random).apply { restore(state) } },
             )
     }

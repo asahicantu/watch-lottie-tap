@@ -8,6 +8,8 @@ import androidx.compose.runtime.setValue
 import com.example.crittertap.data.Language
 
 /**
+ * Repository managing user settings for the CritterTap application.
+ *
  * The two things the user can configure, kept in shared preferences so they
  * survive the watch killing the app.
  *
