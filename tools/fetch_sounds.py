@@ -74,7 +74,7 @@ CATEGORIES = {
     "mouse": ["Mus musculus", "Apodemus", "mice"],
     "fox": ["Vulpes vulpes", "foxes"],
     "wolf": ["Canis lupus", "wolves"],
-    "rooster": ["Gallus gallus domesticus", "Gallus gallus", "roosters"],
+    "rooster": ["rooster, Gallus gallus domesticus", "Gallus gallus", "roosters", "crowing"],
     "goat": ["Capra aegagrus hircus", "Capra hircus", "goats"],
     "donkey": ["Equus africanus asinus", "Equus asinus", "donkeys"],
     "panda": ["Ailuropoda melanoleuca"],
@@ -88,16 +88,37 @@ CATEGORIES = {
 
 # Free-text fallback when the categories come up empty.
 QUERIES = {
-    "cat": ["cat meow"], "dog": ["dog barking"], "cow": ["cow moo"],
-    "duck": ["duck quack"], "frog": ["frog croak"], "lion": ["lion roar"],
-    "bee": ["bee buzzing"], "sheep": ["sheep bleat"], "owl": ["owl hoot"],
-    "pig": ["pig grunt"], "horse": ["horse whinny"], "elephant": ["elephant trumpet"],
-    "monkey": ["monkey call"], "penguin": ["penguin call"], "tiger": ["tiger growl"],
-    "bear": ["bear growl"], "rabbit": ["rabbit squeal"], "mouse": ["mouse squeak"],
-    "fox": ["fox call"], "wolf": ["wolf howl"], "rooster": ["cock crowing"],
-    "goat": ["goat bleat"], "donkey": ["donkey braying"], "panda": ["panda call"],
-    "koala": ["koala bellow"], "giraffe": ["giraffe sound"], "hippo": ["hippopotamus call"],
-    "crocodile": ["crocodile hiss"], "snake": ["snake hiss"], "parrot": ["parrot call"],
+    "cat":          ["cat meow"],
+    "dog":          ["dog barking"],
+    "cow":          ["cow moo"],
+    "duck":         ["duck quack"],
+    "frog":         ["frog croak"],
+    "lion":         ["lion roar"],
+    "bee":          ["bee buzzing"],
+    "sheep":        ["sheep bleat"],
+    "owl":          ["owl hoot"],
+    "pig":          ["pig grunt"],
+    "horse":        ["horse whinny"],
+    "elephant":     ["elephant trumpet"],
+    "monkey":       ["monkey call"],
+    "penguin":      ["penguin call"],
+    "tiger":        ["tiger growl"],
+    "bear":         ["bear growl"],
+    "rabbit":        ["rabbit squeal"],
+    "mouse":        ["mouse squeak"],
+    "fox":          ["fox call"],
+    "wolf":         ["wolf howl"],
+    "rooster":      ["rooster crowing"],
+    "goat":         ["goat bleat"],
+    "donkey":       ["donkey braying"],
+    "panda":        ["panda call"],
+    "koala":        ["koala bellow"],
+    "giraffe":      ["giraffe sound"],
+    "hippo":        ["hippopotamus call"],
+    "crocodile":    ["crocodile hiss"],
+    "snake":        ["snake hiss"],
+    "parrot":       ["parrot call"],
+
 }
 
 
@@ -363,6 +384,7 @@ def files_by_search(term):
     payload = api(generator="search", gsrsearch=term, gsrnamespace="6",
                   gsrlimit="20", prop="imageinfo",
                   iiprop="url|mime|size|extmetadata")
+    print(payload)
     return [describe(p) for p in payload.get("query", {}).get("pages", {}).values()]
 
 
@@ -397,6 +419,7 @@ def candidates_for(critter, verbose=False):
     if not keep:
         for term in QUERIES.get(critter, []):
             try:
+                print("Trying for " + term)
                 consider(files_by_search(term), "search:" + term)
             except Exception as error:                          # noqa: BLE001
                 print("  ! search %r failed: %s" % (term, error), end="")
