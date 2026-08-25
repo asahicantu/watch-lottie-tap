@@ -1,8 +1,9 @@
 """Fetches freely-licensed critter sounds from Wikimedia Commons.
 
-    python tools/fetch_sounds.py                 # search + download into sounds/
-    python tools/fetch_sounds.py --report        # search only, download nothing
-    python tools/fetch_sounds.py --only cat dog  # a subset
+    python tools/fetch_sounds.py                    # one clip per critter
+    python tools/fetch_sounds.py --candidates 5     # five each, to audition
+    python tools/fetch_sounds.py --report           # search only, download nothing
+    python tools/fetch_sounds.py --only rooster     # a subset
 
 Commons is used because it is the only large animal-audio source reachable from
 a script with no credentials: it has an open API, no key, no account, and it
@@ -74,7 +75,7 @@ CATEGORIES = {
     "mouse": ["Mus musculus", "Apodemus", "mice"],
     "fox": ["Vulpes vulpes", "foxes"],
     "wolf": ["Canis lupus", "wolves"],
-    "rooster": ["rooster, Gallus gallus domesticus", "Gallus gallus", "roosters", "crowing"],
+    "rooster": ["Gallus gallus domesticus", "Gallus gallus", "Gallus", "chickens", "roosters"],
     "goat": ["Capra aegagrus hircus", "Capra hircus", "goats"],
     "donkey": ["Equus africanus asinus", "Equus asinus", "donkeys"],
     "panda": ["Ailuropoda melanoleuca"],
@@ -177,23 +178,42 @@ def licence_is_free(short_name, code):
     )
 
 
-SPEECH_MARKERS = re.compile(
-    r"pronunciation|pronounce|lingua libre|spoken (word|version)|"
-    r"audio recording of the word|wiktionary",
+HUMAN_AUDIO = re.compile(
+    # Wiktionary and Lingua Libre pronunciation clips
+    r"pronun\w*|pronou\w*|lingua libre|spoken (word|version)|wiktionary|"
+    r"audio recording of the word|"
+    # vocabulary projects: "Igbo words", "Tyap word for hare or rabbit"
+    r"\bwords\b|\bword for\b|"
+    # Commons' own categories for human-made noise
+    r"sounds created by (people|babies)|whistling|"
+    # "Vezo people", "Malagasy language" — language and culture recordings
+    r"\b\w+ people\b|\b\w+ language\b",
     re.IGNORECASE,
 )
 
+# The naming convention those language projects use: "Goat in Antefasy",
+# "Tiger in Vezo" — the animal's name spoken in some language.
+WORD_IN_LANGUAGE = re.compile(r"^[\w' -]{1,24} in [A-Z][a-z]+$")
 
-def is_someone_saying_the_word(hit):
+
+def is_a_person_not_an_animal(hit):
     """
-    Commons is full of Wiktionary pronunciation clips, and they are filed in the
-    animal's own category — `Qc-lapin.ogg` sits in "Audio files of Oryctolagus
-    cuniculus" but is a man saying "lapin". Without this the app would announce
-    "Rabbit" and then play a human voice saying it again in French.
+    Commons files human recordings in the animals' own categories, and they come
+    in more flavours than plain pronunciation clips:
+
+      Qc-lapin.ogg        a man saying "lapin", in Audio files of Oryctolagus
+      Lion-agu.oga        the Igbo word for lion, in "Igbo words"
+      Wolf whistle.ogg    a person whistling, in "Sounds created by people"
+      Babys rattle.ogg    a toy, in "Sounds created by babies"
+
+    Any of these would have the app announce the animal and then play a human.
     """
     haystack = " ".join((hit.get("categories", ""), hit.get("description", ""),
                          hit.get("title", "")))
-    return bool(SPEECH_MARKERS.search(haystack))
+    if HUMAN_AUDIO.search(haystack):
+        return True
+    stem = os.path.splitext(hit.get("title", "")[5:])[0]
+    return bool(WORD_IN_LANGUAGE.match(stem))
 
 
 # The noise each critter makes, used to rank candidates. A file whose title or
@@ -215,15 +235,92 @@ ACTIONS = {
 }
 
 
-def relevance(critter, hit):
-    """How strongly the file's own words tie it to this critter. Higher is better."""
-    haystack = (" ".join((hit.get("title", ""), hit.get("description", "")))).lower()
+def identity_terms(critter):
+    """
+    Words that name this animal: the id, its plural, and its scientific names.
+
+    Action words are stripped out even when they appear in a category name.
+    "dogs barking" would otherwise contribute *barking* as proof of identity,
+    which is exactly how a black-tailed prairie dog won the slot for "dog".
+    """
+    noises = ACTIONS.get(critter, [])
     terms = {critter, critter + "s"}
     for name in CATEGORIES.get(critter, []):
-        terms.update(word.lower() for word in name.split() if len(word) > 3)
-    score = sum(2 for term in terms if term in haystack)
-    score += sum(1 for action in ACTIONS.get(critter, []) if action in haystack)
-    return score
+        for word in name.split():
+            word = word.lower()
+            if len(word) > 3 and not any(noise in word for noise in noises):
+                terms.add(word)
+    return terms
+
+
+# Names that contain a critter's name but are not that critter. A prairie dog
+# barks and is filed as a "dog"; Scotch rabbit is cheese on toast.
+CONFUSABLE = {
+    "dog": ["prairie dog", "dogfish", "dog rose", "dogwood"],
+    "cat": ["catfish", "cattle", "catbird", "caterpillar"],
+    "rabbit": ["scotch rabbit", "welsh rarebit", "rabbit stew", "jackrabbit"],
+    "bear": ["bearing", "bear market", "teddy"],
+    "mouse": ["computer mouse", "mouse click", "titmouse"],
+    "horse": ["horseshoe", "seahorse", "horsepower"],
+    "bee": ["beetle", "beech", "beer"],
+    "snake": ["snakeskin"],
+    "wolf": ["wolf whistle", "wolfram"],
+    "tiger": ["tiger moth", "tiger beetle"],
+    "monkey": ["monkey wrench", "monkey puzzle"],
+    "cow": ["cattle egret", "cowbird", "cowrie"],
+}
+
+
+def names_something_else(critter, haystack):
+    return any(phrase in haystack for phrase in CONFUSABLE.get(critter, []))
+
+
+def filed_under_another_animal(critter, hit):
+    """
+    True when Commons has classified the file as some *other* animal.
+
+    This is the reliable version of the confusable-phrase list. The prairie dog
+    that kept winning the "dog" slot is described as a "prarie dog" — the
+    uploader's typo, which no phrase list would ever have caught — but it is
+    filed under `Audio files of Sciuridae`, the squirrel family. A curator has
+    already answered the question; reading their answer beats guessing from
+    prose.
+    """
+    taxa = [part[len("audio files of "):].strip().lower()
+            for part in hit.get("categories", "").split("|")
+            if part.strip().lower().startswith("audio files of ")]
+    # "Audio files of 2006" is a date, not a species.
+    taxa = [taxon for taxon in taxa if taxon and not taxon.isdigit()]
+    if not taxa:
+        return False                     # unclassified: fall back to the prose
+    terms = identity_terms(critter)
+    return not any(re.search(r"\b%s\b" % re.escape(term), taxon)
+                   for taxon in taxa for term in terms)
+
+
+def relevance(critter, hit):
+    """
+    Returns (identity, action) — how strongly the file names the animal, and how
+    strongly it names the noise.
+
+    They are kept apart because matching only the *action* is what let a
+    black-tailed prairie dog win the slot for "dog": the file says "barking"
+    but never "dog". A candidate that cannot name the animal is not a candidate.
+
+    Matching is whole-word, so "cat" no longer matches *cattle* and "bee" no
+    longer matches *beetle*.
+    """
+    haystack = (" ".join((hit.get("title", ""), hit.get("description", "")))).lower()
+    # Commons titles glue words with hyphens and underscores. Flattening them
+    # means "prairie-dog" reads as the compound it is, rather than as a word
+    # boundary that hands the match to "dog".
+    haystack = re.sub(r"[-_/]+", " ", haystack)
+    if names_something_else(critter, haystack):
+        return 0, 0
+    identity = sum(2 for term in identity_terms(critter)
+                   if re.search(r"\b%s\b" % re.escape(term), haystack))
+    action = sum(1 for noise in ACTIONS.get(critter, []) if noise in haystack)
+    return identity, action
 
 
 # --------------------------------------------------------------------------- #
@@ -319,6 +416,17 @@ def mp3_duration(data):
     return None
 
 
+def flac_duration(data):
+    """From STREAMINFO, which FLAC always puts first."""
+    if data[:4] != b"fLaC" or len(data) < 42:
+        return None
+    body = data[8:8 + 34]                        # magic(4) + block header(4)
+    packed = int.from_bytes(body[10:18], "big")  # 20b rate, 3b channels, 5b depth, 36b samples
+    rate = packed >> 44
+    samples = packed & ((1 << 36) - 1)
+    return samples / float(rate) if rate and samples else None
+
+
 def looks_like_mp3(data):
     if data[:3] == b"ID3":
         return True
@@ -330,15 +438,19 @@ def duration_of(data):
         return ogg_duration(data)
     if data[:4] == b"RIFF":
         return wav_duration(data)
+    if data[:4] == b"fLaC":
+        return flac_duration(data)
     if looks_like_mp3(data):
         return mp3_duration(data)
-    return None                                  # webm/flac: playable, not parsed
+    return None                                  # webm: playable, not parsed here
 
 
 def extension_for(data):
     """Android sniffs the content, but a sane extension keeps the folder readable."""
     if data[:4] == b"RIFF":
         return ".wav"
+    if data[:4] == b"fLaC":
+        return ".flac"
     if looks_like_mp3(data):
         return ".mp3"
     return ".ogg"
@@ -372,20 +484,79 @@ def describe(page):
     }
 
 
-def files_in_category(name):
-    payload = api(generator="categorymembers",
-                  gcmtitle="Category:Audio files of " + name,
+FILE_FIELDS = "url|mime|size|extmetadata"
+
+# How many candidates are enough before we stop spending requests.
+CANDIDATE_BUDGET = 30
+
+
+def files_in_category(title):
+    """`title` is a full 'Category:...' page title."""
+    payload = api(generator="categorymembers", gcmtitle=title,
                   gcmtype="file", gcmlimit="60",
-                  prop="imageinfo", iiprop="url|mime|size|extmetadata")
+                  prop="imageinfo", iiprop=FILE_FIELDS)
     return [describe(p) for p in payload.get("query", {}).get("pages", {}).values()]
 
 
 def files_by_search(term):
-    payload = api(generator="search", gsrsearch=term, gsrnamespace="6",
-                  gsrlimit="20", prop="imageinfo",
-                  iiprop="url|mime|size|extmetadata")
-    print(payload)
+    """
+    `filetype:audio` is the whole trick.
+
+    Commons ranks images and PDFs above audio for the same words, so a plain
+    search for "cock crowing" comes back with twenty results and *none* of them
+    a sound — the rooster's six perfectly good recordings never even reached the
+    candidate list. Constraining the search to audio makes every result usable
+    and lets the limit be raised at the same time.
+    """
+    payload = api(generator="search", gsrsearch=term + " filetype:audio",
+                  gsrnamespace="6", gsrlimit="40",
+                  prop="imageinfo", iiprop=FILE_FIELDS)
     return [describe(p) for p in payload.get("query", {}).get("pages", {}).values()]
+
+
+def search_terms(critter):
+    """
+    Build queries from what we already know about the critter rather than
+    relying on one hand-written phrase: the name on its own, the name paired
+    with each noise it makes, any hand-written extras, and the scientific names.
+    """
+    terms = [critter]
+    terms += ["%s %s" % (critter, action) for action in ACTIONS.get(critter, [])]
+    terms += QUERIES.get(critter, [])
+    terms += [name for name in CATEGORIES.get(critter, []) if name[:1].isupper()]
+    ordered, seen = [], set()
+    for term in terms:
+        key = term.lower()
+        if key not in seen:
+            seen.add(key)
+            ordered.append(term)
+    return ordered
+
+
+def discover_categories(critter):
+    """
+    Ask Commons which "Audio files of ..." categories exist for this critter.
+
+    Hand-maintaining that list guesses wrong: the rooster's recordings sit in
+    `Category:Audio files of chickens`, which no amount of staring at a species
+    name would have produced.
+    """
+    found, seen = [], set()
+    probes = [critter, critter + "s"]
+    probes += [name for name in CATEGORIES.get(critter, []) if name[:1].isupper()][:2]
+    for probe in probes[:3]:
+        try:
+            payload = api(list="search", srsearch="Audio files of " + probe,
+                          srnamespace="14", srlimit="10")
+        except Exception as error:                              # noqa: BLE001
+            print("  ! category lookup %r failed: %s" % (probe, error), end="")
+            continue
+        for hit in payload.get("query", {}).get("search", []):
+            title = hit.get("title", "")
+            if title.startswith("Category:Audio files of") and title not in seen:
+                seen.add(title)
+                found.append(title)
+    return found
 
 
 def candidates_for(critter, verbose=False):
@@ -402,33 +573,53 @@ def candidates_for(critter, verbose=False):
             if not licence_is_free(hit["licence"], hit["code"]):
                 rejected.append((hit, "licence %r" % (hit["licence"] or hit["code"] or "?")))
                 continue
-            if is_someone_saying_the_word(hit):
-                rejected.append((hit, "a person pronouncing the word"))
+            if is_a_person_not_an_animal(hit):
+                rejected.append((hit, "a person, not an animal"))
                 continue
+            if filed_under_another_animal(critter, hit):
+                rejected.append((hit, "Commons files it as a different animal"))
+                continue
+            identity, action = relevance(critter, hit)
+            if identity == 0:
+                rejected.append((hit, "never names the animal"))
+                continue
+            # Commons filing something under "Audio files of <taxon>" is a
+            # curator's judgement that it really is that animal — worth more
+            # than any word-matching this script can do. "Scotch rabbit" (a
+            # dish, filed under Welsh rarebit) sinks below any real rabbit.
+            hit["curated"] = "audio files of" in hit.get("categories", "").lower()
+            hit["identity"], hit["action"] = identity, action
+            hit["relevance"] = identity + action + (3 if hit["curated"] else 0)
             hit["source"] = source
             keep.append(hit)
 
-    for name in CATEGORIES.get(critter, []):
+    # Search first: with the audio filter it is now the highest-yield route.
+    for term in search_terms(critter)[:5]:
         try:
-            consider(files_in_category(name), "category:" + name)
+            consider(files_by_search(term), "search:" + term)
         except Exception as error:                              # noqa: BLE001
-            print("  ! category %r failed: %s" % (name, error), end="")
-        if len(keep) >= 4:
+            print("  ! search %r failed: %s" % (term, error), end="")
+        if len(keep) >= CANDIDATE_BUDGET:
             break
 
-    if not keep:
-        for term in QUERIES.get(critter, []):
+    # Then categories, which catch recordings whose titles are in another
+    # language — "Kykyryký.ogg" is a rooster, but no English query finds it.
+    if len(keep) < CANDIDATE_BUDGET:
+        titles = ["Category:Audio files of " + name for name in CATEGORIES.get(critter, [])]
+        titles += [t for t in discover_categories(critter) if t not in titles]
+        for title in titles[:6]:
             try:
-                print("Trying for " + term)
-                consider(files_by_search(term), "search:" + term)
+                consider(files_in_category(title), "category:" + title[24:])
             except Exception as error:                          # noqa: BLE001
-                print("  ! search %r failed: %s" % (term, error), end="")
+                print("  ! category %r failed: %s" % (title, error), end="")
+            if len(keep) >= CANDIDATE_BUDGET:
+                break
 
     # Most obviously on-topic first, then Ogg (always decodable here), then small.
-    for hit in keep:
-        hit["relevance"] = relevance(critter, hit)
-    keep.sort(key=lambda h: (-h["relevance"], 0 if "ogg" in h["mime"] else 1, h["size"]))
+    keep.sort(key=lambda h: (not h["curated"], -h["identity"], -h["action"],
+                             0 if "ogg" in h["mime"] else 1, h["size"]))
     if verbose:
+        print("\n    %d candidates from %d files seen" % (len(keep), len(seen)), end="")
         for hit, why in rejected[:6]:
             print("\n    skipped %-44s %s" % (hit["title"][5:48], why), end="")
     return keep
@@ -443,7 +634,15 @@ def main():
     parser.add_argument("--only", nargs="*", help="limit to these critter ids")
     parser.add_argument("--verbose", action="store_true",
                         help="explain why candidates were skipped")
+    parser.add_argument("--candidates", type=int, default=1, metavar="N",
+                        help="download up to N clips per critter, into "
+                             "sounds/<critter>/, so you can pick by ear")
+    parser.add_argument("--max-seconds", type=float, default=MAX_SECONDS, metavar="S",
+                        help="longest clip to accept (default %.0f); raise it when "
+                             "auditioning and trim the winner afterwards"
+                             % MAX_SECONDS)
     args = parser.parse_args()
+    longest = args.max_seconds
 
     wanted = args.only or list(CATEGORIES)
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -451,37 +650,41 @@ def main():
 
     for critter in wanted:
         print("%-11s" % critter, end=" ", flush=True)
-        picked = None
-        for hit in candidates_for(critter, args.verbose)[:12]:
-            if args.report:
-                picked = dict(hit, seconds=None)
+        picked, tried = [], 0
+        for hit in candidates_for(critter, args.verbose):
+            if len(picked) >= args.candidates or tried >= 5 + args.candidates * 3:
                 break
+            if args.report:
+                picked.append(dict(hit, seconds=None))
+                continue
+            tried += 1
             try:
                 data = get(hit["url"])
             except Exception as error:                          # noqa: BLE001
                 print("\n    ! download failed: %s" % error, end="")
                 continue
             seconds = duration_of(data)
-            if seconds is None or not (MIN_SECONDS <= seconds <= MAX_SECONDS):
+            if seconds is None or not (MIN_SECONDS <= seconds <= longest):
                 if args.verbose:
                     print("\n    skipped %-44s duration %s" % (
                         hit["title"][5:48],
                         "unreadable" if seconds is None else "%.1fs" % seconds), end="")
                 continue
-            extension = extension_for(data)
-            path = os.path.join(OUT_DIR, critter + extension)
+            path = save_path(critter, hit, data, len(picked), args.candidates)
             with open(path, "wb") as handle:
                 handle.write(data)
-            picked = dict(hit, seconds=seconds, path=path)
-            break
+            picked.append(dict(hit, seconds=seconds, path=path))
 
         if picked:
-            print("%-38s %-12s %6s  rel=%-2s %s" % (
-                picked["title"][5:43],
-                picked["licence"][:12] or "?",
-                ("%.1fs" % picked["seconds"]) if picked.get("seconds") else "",
-                picked.get("relevance", "?"),
-                (picked.get("description") or "")[:44]))
+            for index, hit in enumerate(picked):
+                prefix = "%-11s" % "" if index else ""
+                print("%s%-38s %-12s %6s  rel=%-2s %s" % (
+                    prefix,
+                    hit["title"][5:43],
+                    hit["licence"][:12] or "?",
+                    ("%.1fs" % hit["seconds"]) if hit.get("seconds") else "",
+                    hit.get("relevance", "?"),
+                    (hit.get("description") or "")[:44]))
             taken.append((critter, picked))
         else:
             print("-- nothing usable")
@@ -490,10 +693,25 @@ def main():
     if not args.report and taken:
         write_credits(taken)
 
-    print("\n%d of %d critters have a sound in %s" % (len(taken), len(wanted), OUT_DIR))
+    print("\n%d of %d critters have a sound in %s"
+          % (len(taken), len(wanted), OUT_DIR))
+    if args.candidates > 1:
+        print("Up to %d per critter — audition them and keep the best." % args.candidates)
     if missing:
         print("no luck for:", ", ".join(missing))
         print("These need a hand-picked file, or a source that needs an API key.")
+
+
+def save_path(critter, hit, data, index, wanted):
+    """One file per critter stays flat; several go in a folder, ranked by name."""
+    extension = extension_for(data)
+    if wanted <= 1:
+        return os.path.join(OUT_DIR, critter + extension)
+    folder = os.path.join(OUT_DIR, critter)
+    os.makedirs(folder, exist_ok=True)
+    name = os.path.splitext(hit["title"][5:])[0]          # drop Commons' own extension
+    stem = re.sub(r"[^A-Za-z0-9]+", "-", name)[:48].strip("-").lower()
+    return os.path.join(folder, "%d-%s%s" % (index + 1, stem, extension))
 
 
 def write_credits(entries):
@@ -511,12 +729,14 @@ def write_credits(entries):
         "| Critter | File | Licence | Author | What Commons says it is |",
         "| --- | --- | --- | --- | --- |",
     ]
-    for critter, hit in sorted(entries):
-        title = hit["title"][5:].replace("|", "\\|")
-        author = (hit["author"] or "unknown").replace("|", "\\|")
-        note = (hit.get("description") or "").replace("|", "/")[:90]
-        lines.append("| %s | [%s](%s) | %s | %s | %s |" % (
-            critter, title, hit.get("page", ""), hit["licence"] or "?", author, note))
+    for critter, hits in sorted(entries):
+        for hit in hits:
+            title = hit["title"][5:].replace("|", "/")
+            author = (hit["author"] or "unknown").replace("|", "/")
+            note = (hit.get("description") or "").replace("|", "/")[:90]
+            lines.append("| %s | [%s](%s) | %s | %s | %s |" % (
+                critter, title, hit.get("page", ""), hit["licence"] or "?",
+                author, note))
     with open(CREDITS, "w", encoding="utf-8") as handle:
         handle.write("\n".join(lines) + "\n")
     print("\nwrote", CREDITS)
