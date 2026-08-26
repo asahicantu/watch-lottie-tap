@@ -2,19 +2,24 @@ package com.example.crittertap.audio
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
+import androidx.core.content.getSystemService
 import java.util.Locale
 
 /** [SpeechEngine] backed by the watch's own text-to-speech engine. */
 class AndroidSpeechEngine(context: Context) : SpeechEngine {
 
     private val appContext = context.applicationContext
+    private val audioManager = appContext.getSystemService<AudioManager>()
     private var tts: TextToSpeech? = null
     private var doneListener: ((String) -> Unit)? = null
 
@@ -23,15 +28,34 @@ class AndroidSpeechEngine(context: Context) : SpeechEngine {
         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
         .build()
 
-    override fun start(onReady: (Boolean) -> Unit) {
+    override fun start(onReady: (SpeechEngine.Readiness) -> Unit) {
         tts = TextToSpeech(appContext) { status ->
-            val ready = status == TextToSpeech.SUCCESS
-            if (ready) {
+            val engineReady = status == TextToSpeech.SUCCESS
+            if (engineReady) {
                 configure()
             } else {
-                Log.w(TAG, "Text-to-speech unavailable (status=$status); staying silent.")
+                val engines = tts?.engines?.map { it.name } ?: emptyList()
+                Log.w(TAG, "TTS initialization failed (status=$status). Available engines: $engines")
             }
-            onReady(ready)
+
+            val readiness = when {
+                !engineReady -> SpeechEngine.Readiness.NoEngine
+                !hasAudioOutput() -> SpeechEngine.Readiness.NoAudioOutput
+                else -> SpeechEngine.Readiness.Ready
+            }
+            onReady(readiness)
+        }
+    }
+
+    private fun hasAudioOutput(): Boolean {
+        val manager = audioManager ?: return false
+        val devices = manager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        return devices.any {
+            it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER ||
+                it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    (it.type == AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                        it.type == AudioDeviceInfo.TYPE_BLE_SPEAKER))
         }
     }
 

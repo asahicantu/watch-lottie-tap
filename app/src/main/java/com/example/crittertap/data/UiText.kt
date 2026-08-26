@@ -19,6 +19,7 @@ data class UiStrings(
     val tapHint: String,
     val doubleTapHint: String,
     val noVoice: String,
+    val noAudio: String,
     val voiceMissing: String,
 )
 
@@ -34,6 +35,7 @@ object UiText {
         tapHint = "Tap to hear",
         doubleTapHint = "Double tap for next",
         noVoice = "no voice engine",
+        noAudio = "no speaker/headset",
         voiceMissing = "This watch has no English voice installed.",
     )
 
@@ -47,6 +49,7 @@ object UiText {
         tapHint = "Toca para escuchar",
         doubleTapHint = "Doble toque: siguiente",
         noVoice = "sin motor de voz",
+        noAudio = "sin altavoz/auriculares",
         voiceMissing = "Este reloj no tiene voz en español instalada.",
     )
 

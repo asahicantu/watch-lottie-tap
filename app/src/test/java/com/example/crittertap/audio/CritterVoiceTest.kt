@@ -17,7 +17,11 @@ import org.junit.Test
  */
 class CritterVoiceTest {
 
-    private val cat = CritterCatalog["cat"]
+    // .copy(soundRes = null): these tests exercise the spoken-noise path, which
+    // only runs for critters with no bundled recording. Forcing it here keeps
+    // the tests correct regardless of which critters get a real recording
+    // wired up in CritterCatalog.
+    private val cat = CritterCatalog["cat"].copy(soundRes = null)
     private val text = CritterTexts.of("cat", Language.ENGLISH)
 
     private fun voice(
@@ -74,11 +78,40 @@ class CritterVoiceTest {
     }
 
     @Test
-    fun `a watch with no engine goes quiet instead of crashing`() {
-        val (v, engine, _) = voice(ready = false)
-        v.say(cat, text)
-        assertEquals(CritterVoice.Status.Unavailable, v.status)
+    fun `a request made while starting still plays its recording if the engine fails`() {
+        val engine = FakeSpeechEngine()
+        val player = FakeSoundPlayer()
+        val v = CritterVoice(engine, player)
+        val withSound = Critter(id = "cat", assetPath = cat.assetPath, accent = cat.accent, soundRes = 99)
+
+        v.say(withSound, text)
+        assertEquals(CritterVoice.Status.Starting, v.status)
+        assertEquals(emptyList<Pair<Int, Float>>(), player.played)
+
+        engine.becomeReady(false)
+        assertEquals(CritterVoice.Status.NoEngine, v.status)
+        assertEquals(listOf(99 to 1f), player.played)
+    }
+
+    @Test
+    fun `a watch with no engine and no recording goes quiet instead of crashing`() {
+        val (v, engine, player) = voice(ready = false)
+        val noRecording = Critter(id = "cat", assetPath = cat.assetPath, accent = cat.accent)
+        v.say(noRecording, text)
+        assertEquals(CritterVoice.Status.NoEngine, v.status)
         assertEquals(emptyList<String>(), engine.spoken)
+        assertEquals(emptyList<Pair<Int, Float>>(), player.played)
+    }
+
+    @Test
+    fun `a bundled recording plays even with no text-to-speech engine at all`() {
+        val (v, engine, player) = voice(ready = false)
+        val withSound = Critter(id = "cat", assetPath = cat.assetPath, accent = cat.accent, soundRes = 4242)
+        v.say(withSound, text)
+        assertEquals(CritterVoice.Status.NoEngine, v.status)
+        assertEquals("no engine means no spoken description", emptyList<String>(), engine.spoken)
+        assertEquals("the recording needs no engine, so it still plays",
+            listOf(4242 to 1f), player.played)
     }
 
     @Test
@@ -180,7 +213,61 @@ class CritterVoiceTest {
         val (v, engine, _) = voice()
         v.shutdown()
         assertTrue(engine.calls.any { it is FakeSpeechEngine.Call.Shutdown })
-        assertEquals(CritterVoice.Status.Unavailable, v.status)
+        assertEquals(CritterVoice.Status.NoEngine, v.status)
+    }
+
+    @Test
+    fun `replay speaks just the noise, not the description`() {
+        val (v, engine, _) = voice()
+        v.replay(cat, text)
+        assertEquals(listOf(text.noise), engine.spoken)
+    }
+
+    @Test
+    fun `replay plays the recording instead of speaking, when one is bundled`() {
+        val (v, engine, player) = voice()
+        val withSound = Critter(id = "cat", assetPath = cat.assetPath, accent = cat.accent, soundRes = 55)
+        v.replay(withSound, text)
+        assertEquals("a recording replaces the spoken noise entirely",
+            emptyList<String>(), engine.spoken)
+        assertEquals(listOf(55 to 1f), player.played)
+    }
+
+    @Test
+    fun `replay plays a bundled recording even with no text-to-speech engine at all`() {
+        val (v, engine, player) = voice(ready = false)
+        val withSound = Critter(id = "cat", assetPath = cat.assetPath, accent = cat.accent, soundRes = 55)
+        v.replay(withSound, text)
+        assertEquals(emptyList<String>(), engine.spoken)
+        assertEquals(listOf(55 to 1f), player.played)
+    }
+
+    @Test
+    fun `replay stays quiet for a spoken-noise critter with no engine`() {
+        val (v, engine, player) = voice(ready = false)
+        v.replay(cat, text)
+        assertEquals(emptyList<String>(), engine.spoken)
+        assertEquals(emptyList<Pair<Int, Float>>(), player.played)
+    }
+
+    @Test
+    fun `muting silences replay too`() {
+        val (v, engine, player) = voice()
+        v.setVolume(0f)
+        v.replay(cat, text)
+        assertEquals(emptyList<String>(), engine.spoken)
+        assertEquals(emptyList<Pair<Int, Float>>(), player.played)
+    }
+
+    @Test
+    fun `replay cuts off whatever was playing`() {
+        val (v, engine, player) = voice()
+        v.say(cat, text)
+        val before = player.stops
+        v.replay(cat, text)
+        assertTrue("the engine should be stopped first",
+            engine.calls.any { it is FakeSpeechEngine.Call.Stop })
+        assertTrue("any recording should be stopped too", player.stops > before)
     }
 
     @Test
@@ -192,7 +279,7 @@ class CritterVoiceTest {
             v.setLanguage(language)
 
             val expected: CritterText = CritterTexts.of("cow", language)
-            v.say(CritterCatalog["cow"], expected)
+            v.say(CritterCatalog["cow"].copy(soundRes = null), expected)
             assertEquals(listOf(expected.description, expected.noise), engine.spoken)
         }
     }

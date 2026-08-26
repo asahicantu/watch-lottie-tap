@@ -26,21 +26,21 @@ class FakeSpeechEngine(
     var started = false
         private set
 
-    private var onReady: ((Boolean) -> Unit)? = null
+    private var onReady: ((SpeechEngine.Readiness) -> Unit)? = null
     private var doneListener: ((String) -> Unit)? = null
 
     /** The spoken text in order, ignoring gaps and stops. */
     val spoken: List<String>
         get() = calls.filterIsInstance<Call.Speak>().map { it.text }
 
-    override fun start(onReady: (Boolean) -> Unit) {
+    override fun start(onReady: (SpeechEngine.Readiness) -> Unit) {
         started = true
         this.onReady = onReady
     }
 
     /** Completes start-up. Nothing is spoken until this is called. */
     fun becomeReady(ready: Boolean = true) {
-        onReady?.invoke(ready)
+        onReady?.invoke(if (ready) SpeechEngine.Readiness.Ready else SpeechEngine.Readiness.NoEngine)
     }
 
     override fun speak(text: String, volume: Float, utteranceId: String, flush: Boolean) {

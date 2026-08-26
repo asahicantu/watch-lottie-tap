@@ -31,9 +31,11 @@ class PlayScreenTest {
     val rule = createComposeRule()
 
     private val shown = mutableListOf<Pair<String, CritterText>>()
+    private val poked = mutableListOf<Pair<String, CritterText>>()
 
     private fun start(language: Language = Language.ENGLISH) {
         shown.clear()
+        poked.clear()
         rule.setContent {
             CritterTapTheme {
                 PlayScreen(
@@ -41,6 +43,9 @@ class PlayScreenTest {
                     strings = UiText.of(language),
                     onCritterShown = { critter: Critter, text: CritterText ->
                         shown += critter.id to text
+                    },
+                    onCritterPoked = { critter: Critter, text: CritterText ->
+                        poked += critter.id to text
                     },
                 )
             }
@@ -68,14 +73,15 @@ class PlayScreenTest {
     }
 
     @Test
-    fun singleTapRepeatsTheSameCritter() {
+    fun singleTapReplaysTheSameCritterWithoutReintroducing() {
         start()
         val first = shown.single().first
 
         tapOnce()
 
-        assertEquals("a single tap should speak again, not move on", 2, shown.size)
-        assertEquals(first, shown.last().first)
+        assertEquals("a single tap should not repeat the introduction", 1, shown.size)
+        assertEquals("a single tap should replay the same critter", 1, poked.size)
+        assertEquals(first, poked.single().first)
     }
 
     @Test

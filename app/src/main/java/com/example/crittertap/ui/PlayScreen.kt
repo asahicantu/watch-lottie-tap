@@ -1,5 +1,7 @@
 package com.example.crittertap.ui
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -10,6 +12,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -74,13 +77,15 @@ private val HINT_LINE_HEIGHT = 22.dp
  * The main play screen of the toy.
  *
  * Interactions:
- * * **Tap** — says the critter's description, then the noise it makes.
+ * * **Tap** — the first time a critter appears, says its description, then
+ *   the noise it makes; tapping it again just replays the noise.
  * * **Double tap** — brings on the next critter (and introduces it).
  * * **Rotating bezel / crown** — steps through the catalog in order.
  *
  * @param language The current [Language] selected in settings.
  * @param strings The localized UI strings.
- * @param onCritterShown Callback when a critter is presented to the user (usually for voice).
+ * @param onCritterShown Callback when a critter is first presented to the user (usually for voice).
+ * @param onCritterPoked Callback when an already-shown critter is tapped again (usually for voice).
  * @param modifier Modifier for the root container.
  * @param voiceStatus The availability status of the text-to-speech engine.
  * @param viewModel The ViewModel managing play state.
@@ -91,6 +96,7 @@ fun PlayScreen(
     language: Language,
     strings: UiStrings,
     onCritterShown: (Critter, CritterText) -> Unit,
+    onCritterPoked: (Critter, CritterText) -> Unit,
     modifier: Modifier = Modifier,
     voiceStatus: CritterVoice.Status = CritterVoice.Status.Ready,
     viewModel: PlayViewModel = viewModel(factory = PlayViewModel.Factory)
@@ -102,9 +108,21 @@ fun PlayScreen(
     val focusRequester = remember { FocusRequester() }
     var rotaryAccumulator by remember { mutableFloatStateOf(0f) }
 
+    fun openAudioSettings() {
+        val intent = when (voiceStatus) {
+            CritterVoice.Status.NoAudioOutput -> Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+            CritterVoice.Status.NoEngine -> Intent("com.android.settings.TTS_SETTINGS")
+            else -> null
+        }
+        intent?.let {
+            it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(it)
+        }
+    }
+
     fun speak() {
         haptics.poke()
-        viewModel.onSpeakTriggered(onCritterShown)
+        viewModel.onSpeakTriggered(onCritterPoked)
     }
 
     fun next() {
@@ -156,18 +174,25 @@ fun PlayScreen(
             },
         )
 
-        // A watch with no text-to-speech engine would otherwise just be
-        // mysteriously silent, so say so instead.
+        // A watch with no text-to-speech engine or audio output would otherwise
+        // just be mysteriously silent, so say so instead.
         AnimatedVisibility(
-            visible = voiceStatus == CritterVoice.Status.Unavailable,
+            visible = voiceStatus != CritterVoice.Status.Ready && voiceStatus != CritterVoice.Status.Starting,
             enter = fadeIn(tween(400)),
             exit = fadeOut(tween(200)),
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 8.dp),
+                .padding(top = 8.dp)
+                .clickable(enabled = voiceStatus != CritterVoice.Status.Starting) {
+                    openAudioSettings()
+                },
         ) {
             Text(
-                text = strings.noVoice,
+                text = when (voiceStatus) {
+                    CritterVoice.Status.NoEngine -> strings.noVoice
+                    CritterVoice.Status.NoAudioOutput -> strings.noAudio
+                    else -> ""
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -291,6 +316,7 @@ private fun PlayScreenPreview() {
             language = Language.ENGLISH,
             strings = UiText.of(Language.ENGLISH),
             onCritterShown = { _, _ -> },
+            onCritterPoked = { _, _ -> },
         )
     }
 }

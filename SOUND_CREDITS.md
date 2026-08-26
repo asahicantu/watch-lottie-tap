@@ -19,6 +19,9 @@ licence and a duration, but not that a clip is the right animal.
 | giraffe | [Giraffe snort.oga](https://commons.wikimedia.org/wiki/File:Giraffe_snort.oga) | CC BY-SA 4.0 | Anton Baotic, Florian Sicks and Angela S. Stoeger | Giraffe snoring |
 | horse | [Wiehern.ogg](https://commons.wikimedia.org/wiki/File:Wiehern.ogg) | Public domain | Hü. | A sounding recording of a neighing horse. |
 | monkey | [Campbell's-Monkeys-Use-Affixation-to-Alter-Call-Meaning-pone.0007808.s002.ogg](https://commons.wikimedia.org/wiki/File:Campbell%27s-Monkeys-Use-Affixation-to-Alter-Call-Meaning-pone.0007808.s002.ogg) | CC BY 2.5 | Ouattara K, Lemasson A, Zuberbühler K | “Hok-oo” are given to a range of disturbances within the canopy, including eagles, the pre |
-| pig | [Pig grunt - Erdie.ogg](https://commons.wikimedia.org/wiki/File:Pig_grunt_-_Erdie.ogg) | CC BY 3.0 | erdie | This pig was recorded on a farm and used for an MMORPG computer game. |
+| mouse | [Ultrasonic-Songs-of-Male-Mice-pbio.0030386.sa003.ogg](https://commons.wikimedia.org/wiki/File:Ultrasonic-Songs-of-Male-Mice-pbio.0030386.sa003.ogg) | CC BY 3.0 | Holy T, Guo Z | Pitch-Shifted (16×) Playback of the Phrase in Figure 6 A (48 KB WAV). |
+| parrot | [Pyrilia pulchra - Rose-faced Parrot XC251377.mp3](https://commons.wikimedia.org/wiki/File:Pyrilia_pulchra_-_Rose-faced_Parrot_XC251377.mp3) | CC BY-SA 4.0 | Niels Krabbe | :Humid forest bird-seen:no playback-used:no Common name: Rose-faced Parrot Type: flight ca |
+| pig | [Mudchute pig 2.ogg](https://commons.wikimedia.org/wiki/File:Mudchute_pig_2.ogg) | CC BY-SA 3.0 | Secretlondon | Recording of a pig "oink" in Mudchute City Farm, London. |
 | sheep | [Sheep bleat.ogg](https://commons.wikimedia.org/wiki/File:Sheep_bleat.ogg) | CC0 | Eviatar Bach | Sheep bleat from Maan Farms, Abbotsford, British Columbia, Canada |
+| tiger | [Tiger Mad.ogg](https://commons.wikimedia.org/wiki/File:Tiger_Mad.ogg) | CC BY-SA 4.0 | Bilberryerer | This just sounds like a tiger or something else roaring over and over. |
 | wolf | [11wolf.wav](https://commons.wikimedia.org/wiki/File:11wolf.wav) | CC BY 4.0 | Data Clock | ..... |

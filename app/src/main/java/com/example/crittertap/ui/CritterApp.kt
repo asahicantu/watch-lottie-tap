@@ -69,6 +69,7 @@ fun CritterApp() {
                 strings = UiText.of(settings.language),
                 voiceStatus = voice.status,
                 onCritterShown = voice::say,
+                onCritterPoked = voice::replay,
                 viewModel = playViewModel
             )
         }

@@ -12,8 +12,11 @@ import java.util.Locale
  */
 interface SpeechEngine {
 
-    /** Starts the engine. [onReady] gets `false` when the watch has none. */
-    fun start(onReady: (ready: Boolean) -> Unit)
+    /** Readiness state of the engine. */
+    enum class Readiness { Ready, NoEngine, NoAudioOutput }
+
+    /** Starts the engine. [onReady] provides the readiness state. */
+    fun start(onReady: (readiness: Readiness) -> Unit)
 
     /** @param flush true replaces anything already queued, false appends to it. */
     fun speak(text: String, volume: Float, utteranceId: String, flush: Boolean)
