@@ -42,7 +42,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, "sounds")
 CREDITS = os.path.join(ROOT, "SOUND_CREDITS.md")
 
-MIN_SECONDS, MAX_SECONDS = 0.25, 6.0
+MIN_SECONDS, MAX_SECONDS = 0.25, 12.0
 MIN_BYTES, MAX_BYTES = 3_000, 4_000_000
 
 # Commons rate-limits hard; anything under a second earns a 429.
@@ -64,7 +64,7 @@ CATEGORIES = {
     "bee": ["Apis mellifera", "Bombus", "bees"],
     "sheep": ["Ovis aries", "Ovis", "sheep"],
     "owl": ["Strix aluco", "Bubo bubo", "Strigidae", "owls"],
-    "pig": ["Sus scrofa domesticus", "Sus scrofa", "pigs"],
+    "pig": ["Sus scrofa domesticus", "Sus scrofa", "Suidae", "pigs"],
     "horse": ["Equus ferus caballus", "Equus caballus", "horses"],
     "elephant": ["Loxodonta africana", "Elephas maximus", "Elephantidae"],
     "monkey": ["Macaca", "Cercopithecidae", "Cebidae", "monkeys"],
@@ -248,7 +248,7 @@ def identity_terms(critter):
     for name in CATEGORIES.get(critter, []):
         for word in name.split():
             word = word.lower()
-            if len(word) > 3 and not any(noise in word for noise in noises):
+            if len(word) > 2 and not any(noise in word for noise in noises):
                 terms.add(word)
     return terms
 
@@ -268,6 +268,7 @@ CONFUSABLE = {
     "tiger": ["tiger moth", "tiger beetle"],
     "monkey": ["monkey wrench", "monkey puzzle"],
     "cow": ["cattle egret", "cowbird", "cowrie"],
+    "pig": ["guinea pig"],
 }
 
 
