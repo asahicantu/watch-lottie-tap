@@ -25,10 +25,12 @@ import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.tooling.preview.devices.WearDevices
+import com.example.crittertap.data.CritterCatalog
 import com.example.crittertap.data.Language
 import com.example.crittertap.data.UiStrings
 import com.example.crittertap.data.UiText
 import com.example.crittertap.settings.SettingsRepository
+import com.example.crittertap.settings.ShufflingMode
 import com.example.crittertap.ui.theme.CritterColors
 import com.example.crittertap.ui.theme.CritterTapTheme
 import kotlin.math.roundToInt
@@ -43,8 +45,14 @@ fun SettingsScreen(
     strings: UiStrings,
     language: Language,
     volume: Float,
+    catalogSize: Int,
+    shufflingMode: ShufflingMode,
+    speakLabelOnly: Boolean,
     onLanguage: (Language) -> Unit,
     onVolume: (Float) -> Unit,
+    onCatalogSize: (Int) -> Unit,
+    onShufflingMode: (ShufflingMode) -> Unit,
+    onSpeakLabelOnly: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     missingVoiceFor: Language? = null,
 ) {
@@ -72,6 +80,60 @@ fun SettingsScreen(
                 mutedLabel = strings.muted,
                 onVolume = onVolume,
             )
+        }
+
+        item { SectionLabel(strings.catalogSize) }
+        item {
+            CatalogSizeRow(
+                size = catalogSize,
+                onSize = onCatalogSize,
+            )
+        }
+
+        item { SectionLabel(strings.order) }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    ChoiceButton(
+                        label = strings.random,
+                        selected = shufflingMode == ShufflingMode.Random,
+                        onClick = { onShufflingMode(ShufflingMode.Random) }
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ChoiceButton(
+                        label = strings.sequential,
+                        selected = shufflingMode == ShufflingMode.Sequential,
+                        onClick = { onShufflingMode(ShufflingMode.Sequential) }
+                    )
+                }
+            }
+        }
+
+        item { SectionLabel(strings.voiceDetail) }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    ChoiceButton(
+                        label = strings.labelOnly,
+                        selected = speakLabelOnly,
+                        onClick = { onSpeakLabelOnly(true) }
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ChoiceButton(
+                        label = strings.fullDescription,
+                        selected = !speakLabelOnly,
+                        onClick = { onSpeakLabelOnly(false) }
+                    )
+                }
+            }
         }
 
         item { SectionLabel(strings.language) }
@@ -105,6 +167,31 @@ private fun SectionLabel(text: String) {
         color = CritterColors.SectionLabel,
         modifier = Modifier.padding(top = 6.dp),
     )
+}
+
+@Composable
+private fun CatalogSizeRow(size: Int, onSize: (Int) -> Unit) {
+    val step = 10
+    val max = CritterCatalog.all.size
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        StepButton("–", enabled = size > SettingsRepository.MIN_CATALOG_SIZE) { 
+            onSize(size - step) 
+        }
+        Text(
+            text = "$size",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.width(74.dp),
+        )
+        StepButton("+", enabled = size < max) { 
+            onSize(size + step) 
+        }
+    }
 }
 
 /** Minus / value / plus, which beats a slider on a screen this small. */
@@ -172,8 +259,14 @@ private fun SettingsScreenPreview() {
             strings = UiText.of(Language.ENGLISH),
             language = Language.ENGLISH,
             volume = 0.7f,
+            catalogSize = 30,
+            shufflingMode = ShufflingMode.Random,
+            speakLabelOnly = false,
             onLanguage = {},
             onVolume = {},
+            onCatalogSize = {},
+            onShufflingMode = {},
+            onSpeakLabelOnly = {},
         )
     }
 }

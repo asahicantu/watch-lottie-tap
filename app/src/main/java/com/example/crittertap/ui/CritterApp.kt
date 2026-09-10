@@ -41,6 +41,7 @@ fun CritterApp() {
     }
     LaunchedEffect(settings.language) { voice.setLanguage(settings.language) }
     LaunchedEffect(settings.volume) { voice.setVolume(settings.volume) }
+    LaunchedEffect(settings.speakLabelOnly) { voice.setSpeakLabelOnly(settings.speakLabelOnly) }
 
     // Nothing should keep talking once the play screen is left.
     DisposableEffect(navController, voice) {
@@ -63,7 +64,9 @@ fun CritterApp() {
             )
         }
         composable(Routes.PLAY) {
-            val playViewModel: PlayViewModel = viewModel(factory = PlayViewModel.Factory)
+            val playViewModel: PlayViewModel = viewModel(
+                factory = PlayViewModel.factory(settings.catalogSize, settings.shufflingMode)
+            )
             PlayScreen(
                 language = settings.language,
                 strings = UiText.of(settings.language),
@@ -78,9 +81,15 @@ fun CritterApp() {
                 strings = UiText.of(settings.language),
                 language = settings.language,
                 volume = settings.volume,
+                catalogSize = settings.catalogSize,
+                shufflingMode = settings.shufflingMode,
+                speakLabelOnly = settings.speakLabelOnly,
                 missingVoiceFor = voice.missingVoiceFor,
                 onLanguage = settings::updateLanguage,
                 onVolume = settings::updateVolume,
+                onCatalogSize = settings::updateCatalogSize,
+                onShufflingMode = settings::updateShufflingMode,
+                onSpeakLabelOnly = settings::updateSpeakLabelOnly,
             )
         }
     }

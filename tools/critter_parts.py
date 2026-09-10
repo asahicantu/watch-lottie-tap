@@ -46,6 +46,32 @@ def wiggle(pos, base_rot=0.0, amp=8.0, period=30.0, phase=0.0, scale=(100, 100))
                      rotation=oscillate(FRAMES, base_rot, amp, period, phase))
 
 
+# --------------------------------------------------------------------------- #
+# eyes
+#
+# Children read a face eye-first, so every critter shares one big cartoon eye:
+# a dark rim, a bright white, an oversized round pupil, a glint high and a
+# spark low. Whatever size a critter asks for is blended toward EYE_BASE, so a
+# bee and a buffalo come out looking like siblings rather than two unrelated
+# drawings. Tune the three constants to restyle all 120 critters at once.
+# --------------------------------------------------------------------------- #
+
+EYE_BASE = (46.0, 50.0)   # the shared eye every critter is pulled toward
+EYE_MIX = 0.6             # 0 keeps the asked-for size, 1 gives everyone EYE_BASE
+EYE_GROW = 1.12           # a final nudge so the whole cast reads bigger
+EYE_RIM = 8.0             # outline width, so a white eye survives a pale critter
+RIM_COLOR = "#3b322c"
+IRIS_COLOR = "#2b2724"
+PUPIL_SPAN = 0.66         # pupil diameter as a fraction of the smaller axis
+
+
+def eye_size(w, h):
+    """Blend an asked-for eye size toward the shared cartoon default."""
+    bw, bh = EYE_BASE
+    return ((w + (bw - w) * EYE_MIX) * EYE_GROW,
+            (h + (bh - h) * EYE_MIX) * EYE_GROW)
+
+
 def blink_scale(at=52, shut=9):
     return animated([
         (0, [100, 100]), (at, [100, 100]), (at + 3, [100, shut]),
@@ -53,24 +79,62 @@ def blink_scale(at=52, shut=9):
     ])
 
 
-def eye(pos, w=34, h=38, iris="#2f2a26", white="#ffffff", blink_at=52,
-        pupil_offset=(0, 2), highlight=True):
+def _lum(color):
+    h = color.lstrip("#")
+    r, g, b = (int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    return 0.299 * r + 0.587 * g + 0.114 * b
+
+
+def _pale(color):
+    """True for a colour light enough to work as the white of an eye."""
+    return _lum(color) > 0.62
+
+
+def eye(pos, w=34, h=38, iris=IRIS_COLOR, white="#ffffff", blink_at=52,
+        pupil_offset=(0, 2), highlight=True, rim=RIM_COLOR):
+    """The house eye. `w`/`h` are a request, not a promise - see eye_size."""
+    w, h = eye_size(w, h)
+    d = min(w, h) * PUPIL_SPAN
+    px, py = pupil_offset
     parts = []
     if highlight:
-        parts.append(filled(ellipse(w * 0.30, h * 0.30,
-                                    (pupil_offset[0] - w * 0.16,
-                                     pupil_offset[1] - h * 0.20)),
+        parts.append(filled(ellipse(d * 0.36, d * 0.36,
+                                    (px - d * 0.22, py - d * 0.28)),
                             "#ffffff", name="glint"))
-    parts.append(filled(ellipse(w * 0.58, h * 0.62, pupil_offset), iris, name="iris"))
+        parts.append(filled(ellipse(d * 0.17, d * 0.17,
+                                    (px + d * 0.25, py + d * 0.24)),
+                            "#ffffff", name="spark"))
+    if _lum(iris) > 0.25:
+        # a coloured iris needs a pupil of its own, or it reads as a flat disc
+        parts.append(filled(ellipse(d * 0.58, d * 0.58, (px, py)), IRIS_COLOR,
+                            name="pupil"))
+    parts.append(filled(ellipse(d, d, (px, py)), iris, name="iris"))
     parts.append(filled(ellipse(w, h), white, name="white"))
-    return group(parts, transform(pos=pos, scale=blink_scale(blink_at)), name="eye")
+    if rim:
+        parts.append(filled(ellipse(w + EYE_RIM, h + EYE_RIM), rim, name="rim"))
+    return group(parts, transform(pos=pos, scale=blink_scale(blink_at)),
+                 name="eye")
 
 
-def dot_eye(pos, r=19, color="#2b2724", blink_at=52):
+def dot_eye(pos, r=19, color=IRIS_COLOR, blink_at=52):
+    """The old plain dot, now drawn as the house eye so the cast matches.
+
+    A pale `color` was chosen to read against a dark critter, so it becomes the
+    white of the eye rather than the pupil.
+    """
+    w = h = r * 2.1
+    if _pale(color):
+        return eye(pos, w, h, white=color, blink_at=blink_at)
+    return eye(pos, w, h, iris=color, blink_at=blink_at)
+
+
+def pin_eye(pos, r=16, color=IRIS_COLOR, blink_at=52):
+    """A plain glinting dot, for the few critters that want a cluster of little
+    eyes - a spider - instead of the house pair."""
     return group([filled(ellipse(r * 0.32, r * 0.32, (-r * 0.22, -r * 0.26)),
                          "#ffffff", name="glint"),
                   filled(ellipse(r, r), color, name="dot")],
-                 transform(pos=pos, scale=blink_scale(blink_at)), name="eye")
+                 transform(pos=pos, scale=blink_scale(blink_at)), name="pin-eye")
 
 
 def triangle(base_w, height, tilt=0.0, pos=(0, 0)):

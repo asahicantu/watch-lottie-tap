@@ -47,6 +47,7 @@ import androidx.wear.compose.material3.Text
 import androidx.wear.tooling.preview.devices.WearDevices
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.airbnb.lottie.compose.LottieAnimation
@@ -60,6 +61,7 @@ import com.example.crittertap.data.CritterText
 import com.example.crittertap.data.Language
 import com.example.crittertap.data.UiStrings
 import com.example.crittertap.data.UiText
+import com.example.crittertap.settings.ShufflingMode
 import com.example.crittertap.ui.theme.CritterTapTheme
 import kotlin.math.roundToInt
 
@@ -99,7 +101,7 @@ fun PlayScreen(
     onCritterPoked: (Critter, CritterText) -> Unit,
     modifier: Modifier = Modifier,
     voiceStatus: CritterVoice.Status = CritterVoice.Status.Ready,
-    viewModel: PlayViewModel = viewModel(factory = PlayViewModel.Factory)
+    viewModel: PlayViewModel
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -317,6 +319,7 @@ private fun PlayScreenPreview() {
             strings = UiText.of(Language.ENGLISH),
             onCritterShown = { _, _ -> },
             onCritterPoked = { _, _ -> },
+            viewModel = viewModel(factory = PlayViewModel.factory(10, ShufflingMode.Random))
         )
     }
 }

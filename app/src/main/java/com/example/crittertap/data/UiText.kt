@@ -21,6 +21,13 @@ data class UiStrings(
     val noVoice: String,
     val noAudio: String,
     val voiceMissing: String,
+    val catalogSize: String,
+    val order: String,
+    val random: String,
+    val sequential: String,
+    val voiceDetail: String,
+    val labelOnly: String,
+    val fullDescription: String,
 )
 
 object UiText {
@@ -37,6 +44,13 @@ object UiText {
         noVoice = "no voice engine",
         noAudio = "no speaker/headset",
         voiceMissing = "This watch has no English voice installed.",
+        catalogSize = "Catalog Size",
+        order = "Order",
+        random = "Random",
+        sequential = "Sequential",
+        voiceDetail = "Voice Detail",
+        labelOnly = "Label",
+        fullDescription = "Full",
     )
 
     private val spanish = UiStrings(
@@ -51,6 +65,13 @@ object UiText {
         noVoice = "sin motor de voz",
         noAudio = "sin altavoz/auriculares",
         voiceMissing = "Este reloj no tiene voz en español instalada.",
+        catalogSize = "Tamaño del catálogo",
+        order = "Orden",
+        random = "Aleatorio",
+        sequential = "Secuencial",
+        voiceDetail = "Detalle de voz",
+        labelOnly = "Etiqueta",
+        fullDescription = "Completo",
     )
 
     fun of(language: Language): UiStrings = when (language) {

@@ -7,7 +7,7 @@ Same construction as set A - a front-to-back list of shape groups that
 import math
 
 from critter_parts import (
-    FRAMES, blink_scale, dot_eye, eye, oscillate, smile, triangle, wiggle,
+    FRAMES, dot_eye, eye, oscillate, smile, triangle, wiggle,
 )
 from lottie_kit import (
     animated, ellipse, filled, group, outlined, path, rect, transform,
@@ -17,15 +17,6 @@ from lottie_kit import (
 # --------------------------------------------------------------------------- #
 # extra features this set needs
 # --------------------------------------------------------------------------- #
-
-def slit_eye(pos, w=34, h=36, iris="#2f2a26", white="#f6d76b", horizontal=False):
-    """Goat and snake pupils: a bar rather than a dot."""
-    bar = rect(w * 0.52, h * 0.16) if horizontal else rect(w * 0.18, h * 0.55)
-    return group(
-        [filled(bar, iris, name="slit"),
-         filled(ellipse(w, h), white, name="white")],
-        transform(pos=pos, scale=blink_scale()), name="eye")
-
 
 def tuft(x, y, spikes, color, w=22, h=46, spread=26, phase=0.0):
     """A little crest or forelock: a fan of triangles."""
@@ -288,8 +279,8 @@ def goat():
                wiggle((0, 96), base_rot=180, amp=5, period=32), name="beard"),
         nostrils(20, 62, 16, 12, "#a08d76"),
         filled(ellipse(96, 78, (0, 56)), muzzle, name="muzzle"),
-        slit_eye((-44, -34), 40, 36, white="#fbf3dd", horizontal=True),
-        slit_eye((44, -34), 40, 36, white="#fbf3dd", horizontal=True),
+        eye((-44, -34), 40, 36, white="#fbf3dd"),
+        eye((44, -34), 40, 36, white="#fbf3dd"),
         filled(ellipse(152, 184), coat, name="head"),
         filled(ellipse(78, 34), coat,
                wiggle((-84, -26), base_rot=-24, amp=7, period=28), name="ear"),
@@ -422,8 +413,8 @@ def snake():
         name="tongue")
     return [
         flick,
-        slit_eye((-30, -80), 32, 36, white="#f2d64f"),
-        slit_eye((30, -80), 32, 36, white="#f2d64f"),
+        eye((-34, -80), 32, 36, white="#f2d64f"),
+        eye((34, -80), 32, 36, white="#f2d64f"),
         filled(ellipse(130, 106, (0, -70)), skin, name="head"),
         # two stroked ellipses read as a body coiled under the raised head
         outlined(ellipse(104, 54, (0, 54)), dark, 30, name="coil-inner"),

@@ -5,6 +5,8 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.click
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.crittertap.data.Critter
 import com.example.crittertap.data.CritterCatalog
@@ -12,6 +14,7 @@ import com.example.crittertap.data.CritterText
 import com.example.crittertap.data.CritterTexts
 import com.example.crittertap.data.Language
 import com.example.crittertap.data.UiText
+import com.example.crittertap.settings.ShufflingMode
 import com.example.crittertap.ui.theme.CritterTapTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -37,6 +40,9 @@ class PlayScreenTest {
         shown.clear()
         poked.clear()
         rule.setContent {
+            val playViewModel: PlayViewModel = viewModel(
+                factory = PlayViewModel.factory(CritterCatalog.all.size, ShufflingMode.Random)
+            )
             CritterTapTheme {
                 PlayScreen(
                     language = language,
@@ -47,6 +53,7 @@ class PlayScreenTest {
                     onCritterPoked = { critter: Critter, text: CritterText ->
                         poked += critter.id to text
                     },
+                    viewModel = playViewModel
                 )
             }
         }

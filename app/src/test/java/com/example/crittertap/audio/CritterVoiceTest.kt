@@ -283,4 +283,18 @@ class CritterVoiceTest {
             assertEquals(listOf(expected.description, expected.noise), engine.spoken)
         }
     }
+
+    @Test
+    fun `speakLabelOnly toggle switches between label and description`() {
+        val (v, engine, _) = voice()
+        
+        v.setSpeakLabelOnly(true)
+        v.say(cat, text)
+        assertEquals(listOf(text.label, text.noise), engine.spoken)
+        
+        v.setSpeakLabelOnly(false)
+        engine.calls.clear()
+        v.say(cat, text)
+        assertEquals(listOf(text.description, text.noise), engine.spoken)
+    }
 }

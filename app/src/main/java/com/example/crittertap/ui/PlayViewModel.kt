@@ -12,6 +12,7 @@ import com.example.crittertap.data.CritterShuffler
 import com.example.crittertap.data.CritterText
 import com.example.crittertap.data.CritterTexts
 import com.example.crittertap.data.Language
+import com.example.crittertap.settings.ShufflingMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,10 +45,16 @@ private const val KEY_INTERACTIONS = "interactions"
  */
 class PlayViewModel(
     private val savedStateHandle: SavedStateHandle,
-    private val critters: List<Critter> = CritterCatalog.all,
+    catalogSize: Int = CritterCatalog.all.size,
+    shufflingMode: ShufflingMode = ShufflingMode.Random,
 ) : ViewModel() {
 
-    private val shuffler = CritterShuffler(critters.size).apply {
+    private val critters = CritterCatalog.all.take(catalogSize)
+
+    private val shuffler = CritterShuffler(
+        size = critters.size,
+        isRandom = shufflingMode == ShufflingMode.Random
+    ).apply {
         savedStateHandle.get<List<Int>>(KEY_SHUFFLER_STATE)?.let { restore(it) }
     }
 
@@ -117,11 +124,11 @@ class PlayViewModel(
     }
 
     companion object {
-        /** Default factory for creating [PlayViewModel] with [SavedStateHandle]. */
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
+        /** Creates a factory that injects the current settings. */
+        fun factory(catalogSize: Int, shufflingMode: ShufflingMode) = viewModelFactory {
             initializer {
                 val savedStateHandle = createSavedStateHandle()
-                PlayViewModel(savedStateHandle)
+                PlayViewModel(savedStateHandle, catalogSize, shufflingMode)
             }
         }
     }

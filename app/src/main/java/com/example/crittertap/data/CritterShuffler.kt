@@ -20,6 +20,7 @@ import kotlin.random.Random
 class CritterShuffler(
     private val size: Int,
     private val random: Random = Random.Default,
+    private val isRandom: Boolean = true,
 ) {
 
     private val remaining = ArrayDeque<Int>()
@@ -64,21 +65,26 @@ class CritterShuffler(
     }
 
     private fun refill() {
-        val round = (0 until size).shuffled(random).toMutableList()
-        // Never open a new round with the critter that closed the last one.
-        if (size > 1 && round.first() == current) {
-            val swap = 1 + random.nextInt(size - 1)
-            round[0] = round[swap].also { round[swap] = round[0] }
+        val round = if (isRandom) {
+            val shuffled = (0 until size).shuffled(random).toMutableList()
+            // Never open a new round with the critter that closed the last one.
+            if (size > 1 && shuffled.first() == current) {
+                val swap = 1 + random.nextInt(size - 1)
+                shuffled[0] = shuffled[swap].also { shuffled[swap] = shuffled[0] }
+            }
+            shuffled
+        } else {
+            (0 until size).toList()
         }
         remaining.addAll(round)
     }
 
     companion object {
         /** Survives the watch killing and restoring the play screen. */
-        fun saver(size: Int, random: Random = Random.Default): Saver<CritterShuffler, Any> =
+        fun saver(size: Int, random: Random = Random.Default, isRandom: Boolean = true): Saver<CritterShuffler, Any> =
             listSaver(
                 save = { it.state },
-                restore = { state -> CritterShuffler(size, random).apply { restore(state) } },
+                restore = { state -> CritterShuffler(size, random, isRandom).apply { restore(state) } },
             )
     }
 }

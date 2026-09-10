@@ -45,6 +45,7 @@ class CritterVoice(
     private var queuedRecording: Int? = null
     private var language = Language.ENGLISH
     private var volume = 1f
+    private var speakLabelOnly = false
 
     private data class Utterance(val critter: Critter, val text: CritterText)
 
@@ -76,7 +77,8 @@ class CritterVoice(
             Status.NoEngine, Status.NoAudioOutput -> critter.soundRes?.let { player.play(it, volume) }
             Status.Ready -> {
                 queuedRecording = critter.soundRes
-                engine.speak(text.description, volume, describeId(critter), flush = true)
+                val introText = if (speakLabelOnly) text.label else text.description
+                engine.speak(introText, volume, describeId(critter), flush = true)
                 if (critter.soundRes == null) {
                     engine.silence(GAP_MILLIS, gapId(critter))
                     engine.speak(text.noise, volume, noiseId(critter), flush = false)
@@ -113,6 +115,10 @@ class CritterVoice(
     fun setLanguage(value: Language) {
         language = value
         if (status == Status.Ready) applyLanguage()
+    }
+
+    fun setSpeakLabelOnly(value: Boolean) {
+        speakLabelOnly = value
     }
 
     fun stop() {
