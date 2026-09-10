@@ -3,7 +3,7 @@
 import math
 
 from critter_parts import (
-    dot_eye, eye, pin_eye, smile, triangle, wiggle,
+    FRAMES, dot_eye, eye, oscillate, pin_eye, smile, triangle, wiggle,
 )
 from lottie_kit import ellipse, filled, group, outlined, path, rect, transform
 
@@ -211,11 +211,64 @@ def dinosaur():
 
 
 def gorilla():
-    fur_c, skin_c = "#212121", "#424242"
+    """A silverback portrait: peaked crest, heavy brow, broad flat muzzle, and
+    two fists taking turns on the chest. The old one was a black disc with
+    eyes - at watch size nothing but the eyes survived, because every feature
+    was the same near-black. The fur is lifted to a warm charcoal so the face,
+    muzzle and brow can each sit a step apart from it and still read.
+    """
+    fur, crest_c, shade = "#3D3733", "#2B2624", "#332E2B"
+    face_c, muzzle_c = "#584D47", "#6B5C53"
+    deep, silver = "#1E1A18", "#5C544E"
+
+    def ear(x, phase):
+        return group([filled(ellipse(18, 24), muzzle_c, name="inner"),
+                      filled(ellipse(36, 44), fur, name="outer")],
+                     wiggle((x, -16), base_rot=x * 0.05, amp=4, period=45,
+                            phase=phase), name="ear")
+
+    def arm(x, phase):
+        """A forearm hinged at the shoulder. Both swing on the same short
+        period half a cycle apart, so the fists take turns thumping the chest
+        the way a gorilla actually drums."""
+        knuckles = [filled(ellipse(11, 11, (k, 74)), silver, name="knuckle")
+                    for k in (-15, 0, 15)]
+        return group(
+            knuckles + [
+                filled(ellipse(56, 50, (0, 86)), crest_c, name="fist"),
+                filled(rect(40, 96, (0, 48), radius=20), fur, name="forearm"),
+            ],
+            transform(pos=(x, 40),
+                      rotation=oscillate(FRAMES, x * 0.30, 10, 30, phase)),
+            name="arm")
+
+    def nostril(x):
+        return filled(ellipse(15, 22), deep,
+                      transform(pos=(x, 36), rotation=x * 0.85), name="nostril")
+
     return [
-        filled(ellipse(120, 80, (0, 40)), skin_c, name="chest"),
-        eye((-40, -30), 34, 38, iris="#000000"), eye((40, -30), 34, 38, iris="#000000"),
-        filled(ellipse(200, 180), fur_c, name="head"),
+        nostril(-17), nostril(17),
+        smile(66, 15, y=74, color=deep, w=6),
+        # the nose pad is one wide flat block, not a snout - it is what tells
+        # a gorilla apart from every other dark round face in the set
+        filled(rect(80, 48, (0, 32), radius=20), shade, name="nose"),
+        filled(ellipse(152, 96, (0, 50)), muzzle_c, name="muzzle"),
+        eye((-46, -18), 32, 34, iris="#7A4B22"),
+        eye((46, -18), 32, 34, iris="#7A4B22"),
+        # the brow is fur-coloured on purpose: it merges into the head and
+        # notches the top of the pale face instead of drawing a dark band
+        # across it, and that notch is what reads as the scowl
+        filled(rect(176, 48, (0, -60), radius=24), fur, name="brow"),
+        filled(ellipse(164, 142, (0, 12)), face_c, name="face"),
+        # the sagittal crest, drawn on the head rather than behind it, so the
+        # skull peaks instead of wearing a hat
+        filled(ellipse(64, 96, (0, -76)), shade, name="crest-ridge"),
+        filled(ellipse(206, 182, (0, -8)), fur, name="head"),
+        ear(-100, 0.0), ear(100, 0.5),
+        filled(ellipse(148, 88, (0, -80)), fur, name="crest"),
+        arm(-98, 0.0), arm(98, 0.5),
+        filled(ellipse(98, 62, (0, 126)), silver, name="chest-patch"),
+        filled(ellipse(192, 130, (0, 120)), fur, name="chest"),
     ]
 
 
@@ -384,12 +437,107 @@ def snail():
 
 
 def squid():
-    body_c = "#EC407A"
-    tentacles = [filled(rect(15, 80, radius=7), body_c,
-                        wiggle((x, 60), base_rot=0, amp=15, period=30, phase=x*0.1)) for x in range(-50, 51, 25)]
-    return tentacles + [
-        eye((-40, 10), 34, 38, iris="#880E4F"), eye((40, 10), 34, 38, iris="#880E4F"),
-        filled(path([(-80, 20), (0, -100), (80, 20)], True), body_c, name="head"),
+    """A squid, not a triangle on sticks. The old one drew five stiff bars
+    that swung through each other into a W, over a flat pink wedge.
+
+    What makes a squid a squid rather than the octopus two files over: a
+    pointed torpedo mantle, the pair of fins fluttering at the tip of it, and
+    ten limbs instead of eight - eight short arms, and two long feeding
+    tentacles that hang past them with a paddle-shaped club on the end.
+    """
+    skin, deep, pale = "#EE5A76", "#8E1B3F", "#F6A7B6"
+    fin_c, cup_c = "#F4869B", "#FDE2E8"
+
+    def limb(attach, heading, lens, rads, curl, phase, amp, cups=0, club=None):
+        """A tapered chain of rounded capsules, each joint parented to the end
+        of the one before it. Every joint swings a little wider and a little
+        later than its parent, so the bend travels out to the tip and the limb
+        undulates instead of pivoting like a bar."""
+        node = None
+        for s in reversed(range(len(lens))):
+            length, r = lens[s], rads[s]
+            items = []
+            if s == len(lens) - 1 and club is not None:
+                cw, ch = club
+                items += [filled(ellipse(cw * 0.34, cw * 0.34,
+                                         (length + cw * (f - 0.5) * 0.6,
+                                          -curl * ch * 0.2)), cup_c, name="cup")
+                          for f in (0.3, 0.7)]
+                items.append(filled(ellipse(cw, ch, (length, 0)), fin_c,
+                                    name="club"))
+            if s < cups:
+                items += [filled(ellipse(r * 0.48, r * 0.48,
+                                         (length * f, -curl * r * 0.42)),
+                                 cup_c, name="cup")
+                          for f in (0.3, 0.72)]
+            items.append(filled(rect(length + 2 * r, 2 * r, (length * 0.5, 0),
+                                     radius=r), skin, name="limb"))
+            if node is not None:
+                items.append(node)
+            base = (heading if s == 0 else 0.0) + curl * (1.5 + 3.0 * s)
+            node = group(items,
+                         transform(pos=attach if s == 0 else (lens[s - 1], 0),
+                                   rotation=oscillate(FRAMES, base,
+                                                      amp * (1 + 0.7 * s), 30,
+                                                      phase + s * 0.16,
+                                                      steps=3)),
+                         name="joint")
+        return node
+
+    # eight arms in a fan, the outer ones shorter so the bunch tapers
+    arms = []
+    for i in range(8):
+        f = i / 7.0
+        spread = (f - 0.5) * 2.0                      # -1 left .. +1 right
+        heading = 90 - spread * 46
+        attach = (spread * 46, 58 - abs(spread) * 8)
+        scale = 1.0 - 0.20 * abs(spread)
+        arms.append(limb(attach, heading,
+                         [46 * scale, 38 * scale, 30 * scale],
+                         [11.5, 8.5, 5.5],
+                         -1.0 if spread >= 0 else 1.0,
+                         phase=0.10 * i, amp=2.6, cups=2))
+
+    # the two feeding tentacles: longer, thinner, slower, and clubbed
+    tentacles = [limb((x, 52), 90 - x * 0.30, [58, 52, 46],
+                      [8.5, 7.0, 5.5], -1.0 if x > 0 else 1.0,
+                      phase=0.35 if x > 0 else 0.85, amp=2.0, club=(38, 24))
+                 for x in (-24, 24)]
+
+    def fin(x, phase):
+        """A triangular fin at the tip of the mantle, hinged where it meets
+        the body so it ripples along its trailing edge."""
+        tip = 92 * (1 if x > 0 else -1)
+        return group([filled(path([(0, -44), (tip, 6), (0, 40)], True,
+                                  tangents=[((-tip * 0.1, -18), (tip * 0.42, -14)),
+                                            ((-tip * 0.3, -16), (-tip * 0.3, 16)),
+                                            ((tip * 0.42, 18), (0, 0))]),
+                             fin_c, name="blade")],
+                     transform(pos=(x, -58),
+                               rotation=oscillate(FRAMES, 0, 7, 30, phase)),
+                     name="fin")
+
+    # a pointed mantle: apex on top, shoulders below the fins, rounded off
+    # where the head begins
+    mantle = filled(path([(0, -128), (66, -22), (0, 32), (-66, -22)], True,
+                         tangents=[((-13, 30), (13, 30)),
+                                   ((6, -54), (-2, 30)),
+                                   ((38, 4), (-38, 4)),
+                                   ((2, 30), (-6, -54))]),
+                    skin, name="mantle")
+    # chromatophores: the speckling a squid flushes across its mantle
+    speckles = [filled(ellipse(r, r, (sx, sy)), deep, name="speckle")
+                for sx, sy, r in ((-20, -80, 8), (18, -66, 7), (-28, -44, 8),
+                                  (26, -34, 7), (0, -56, 6), (-4, -18, 7))]
+
+    return arms + tentacles + [
+        smile(42, 11, y=46, color=deep, w=5),
+        eye((-48, 14), 34, 38, iris="#5E1030"),
+        eye((48, 14), 34, 38, iris="#5E1030"),
+        filled(ellipse(132, 84, (0, 22)), pale, name="head"),
+    ] + speckles + [
+        mantle,
+        fin(-24, 0.0), fin(24, 0.5),
     ]
 
 

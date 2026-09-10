@@ -54,51 +54,53 @@ def dolphin():
 
 
 def octopus():
-    mantle, arm_c, cup_c, deep = "#BA68C8", "#A83FB6", "#F2D6F8", "#5B1470"
+    mantle, arm_c, cup_c, deep = "#BA68C8", "#A83FB6", "#E3BCF0", "#5B1470"
+
+    # Each arm is a chain of six rounded capsules, every one parented to the
+    # end of the one before it. A single stiff arm swinging from the shoulder
+    # looked like a wiper blade; because each joint here oscillates a little
+    # wider and a little later than its parent, the bend travels out to the
+    # tip and the arm undulates instead of pivoting.
+    LENS = (38, 34, 30, 26, 22)
+    RADS = (17.0, 13.5, 10.0, 7.0, 4.0)
+    # no two neighbouring arms the same length, mirrored left to right
+    STRETCH = (1.00, 0.94, 1.06, 0.97)
 
     def arm(i):
-        """One arm. The heading turns a little more with every step, so the
-        centre line hangs almost straight from the mantle and curls at the tip;
-        offsetting it either side by a shrinking radius gives one smooth
-        tapered outline instead of a row of beads."""
         phi = math.pi * (0.10 + 0.80 * i / 7.0)
-        ax, ay = 84 * math.cos(phi), 70 * math.sin(phi)
-        curl = 1.0 if phi < math.pi / 2 else -1.0
-        steps = 11
-        centre, rads = [], []
-        # arms fan outward but are pulled back toward straight down
-        ang = phi + (math.pi / 2 - phi) * 0.45
-        x, y = 0.0, 0.0
-        for s in range(steps):
-            f = s / (steps - 1.0)
-            centre.append((x, y))
-            rads.append(17.0 - 14.0 * f)
-            step = 22 - 7 * f
-            ang += curl * (0.02 + 0.17 * f)
-            x += step * math.cos(ang)
-            y += step * math.sin(ang)
+        attach = (84 * math.cos(phi), 70 * math.sin(phi))
+        side = 1.0 if phi < math.pi / 2 else -1.0
+        # most arms hook in under the body; the outermost pair hooks out
+        curl = -side if i in (0, 7) else side
+        stretch = STRETCH[min(i, 7 - i)]
+        # the arm fans outward, pulled back toward straight down - the
+        # outward-hooking pair starts steeper so its curl lifts the tip
+        # instead of throwing the whole arm out sideways
+        pull = 0.78 if curl != side else 0.38
+        heading = math.degrees(phi + (math.pi / 2 - phi) * pull)
 
-        near, far, cups = [], [], []
-        for s, (cx, cy) in enumerate(centre):
-            bx, by = centre[max(s - 1, 0)]
-            fx, fy = centre[min(s + 1, steps - 1)]
-            tx, ty = fx - bx, fy - by
-            ln = math.hypot(tx, ty) or 1.0
-            nx, ny = -ty / ln, tx / ln
-            r = rads[s]
-            near.append((cx + nx * r, cy + ny * r))
-            far.append((cx - nx * r, cy - ny * r))
-            if 1 <= s <= 8 and s % 2:
-                # suckers ride the inside of the curl
-                ix, iy = (nx, ny) if curl < 0 else (-nx, -ny)
-                cups.append(filled(ellipse(r * 0.52, r * 0.52,
-                                           (cx + ix * r * 0.42,
-                                            cy + iy * r * 0.42)),
-                                   cup_c, name="cup"))
-        limb = filled(path(near + far[::-1]), arm_c, name="limb")
-        return group(cups + [limb],
-                     wiggle((ax, ay), amp=9, period=34, phase=i * 0.12),
-                     name="arm")
+        node = None
+        for s in reversed(range(len(LENS))):     # built from the tip inward
+            length, r = LENS[s] * stretch, RADS[s]
+            items = []
+            if s < 3:
+                items += [filled(ellipse(r * 0.5, r * 0.5,
+                                         (length * f, curl * r * 0.44)),
+                                 cup_c, name="cup")
+                          for f in (0.28, 0.70)]
+            # a capsule: as long as the segment, rounded off at both ends
+            items.append(filled(rect(length + 2 * r, 2 * r, (length * 0.5, 0),
+                                     radius=r), arm_c, name="limb"))
+            if node is not None:
+                items.append(node)
+            base = (heading if s == 0 else 0.0) + curl * (2.5 + 4.0 * s)
+            node = group(
+                items,
+                transform(pos=attach if s == 0 else (LENS[s - 1] * stretch, 0),
+                          rotation=oscillate(FRAMES, base, 2.5 + 2.2 * s, 40,
+                                             i * 0.13 + s * 0.15, steps=3)),
+                name="joint")
+        return node
 
     return [
         smile(44, 11, y=44, color=deep, w=5),
