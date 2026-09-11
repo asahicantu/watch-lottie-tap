@@ -35,11 +35,17 @@ def main():
     names = []
     for name in sorted(CRITTERS):
         out = os.path.join(OUT_DIR, name + ".json")
-        write(critter(name, CRITTERS[name]()), out)
-        size = os.path.getsize(out)
-        total += size
-        names.append(name)
-        print("wrote %-16s %6d bytes" % (os.path.basename(out), size))
+        try:
+            write(critter(name, CRITTERS[name]()), out)
+            size = os.path.getsize(out)
+            total += size
+            names.append(name)
+            print("wrote %-16s %6d bytes" % (os.path.basename(out), size))
+        except Exception as e:
+            print("failed to write %s: %s" % (name, e))
+            # Still add it to names if it exists to keep the gallery coherent
+            if os.path.exists(out):
+                names.append(name)
 
     # Write a manifest for the gallery viewer
     manifest_path = os.path.join(OUT_DIR, "manifest.json")
