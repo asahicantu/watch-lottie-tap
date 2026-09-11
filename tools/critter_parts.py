@@ -144,10 +144,10 @@ def triangle(base_w, height, tilt=0.0, pos=(0, 0)):
     return path([(v[0] + pos[0], v[1] + pos[1]) for v in verts], closed=True)
 
 
-def smile(width=70, drop=26, y=0, color="#5a3b2e", w=8):
+def smile(width=70, drop=26,x=0, y=0, color="#5a3b2e", w=8):
     hw = width / 2.0
     return outlined(
-        path([(-hw, y), (0, y + drop), (hw, y)], closed=False,
+        path([(x - hw, y), (x, y + drop), (x + hw, y)], closed=False,
              tangents=[((0, 0), (hw * 0.35, drop * 0.9)),
                        ((-hw * 0.45, 0), (hw * 0.45, 0)),
                        ((-hw * 0.35, drop * 0.9), (0, 0))]),

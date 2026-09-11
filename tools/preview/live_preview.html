@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Critter live preview</title>
+<script src="/lottie.min.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { background:#0e1013; color:#e9edf2; margin:0;
+         font:13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
+  header { display:flex; align-items:center; gap:14px; padding:10px 16px;
+           border-bottom:1px solid #23282f; flex-wrap:wrap; }
+  select, button, input[type=text], input[type=number] {
+    background:#1a1e24; color:#e9edf2; border:1px solid #333a44;
+    border-radius:6px; padding:5px 9px; font:inherit;
+  }
+  button { cursor:pointer; }
+  button:hover { border-color:#4a5261; }
+  button.primary { background:#26456b; border-color:#3a6ba0; }
+  button.small { padding:2px 7px; font-size:11px; }
+  .grow { flex:1; }
+  .muted { color:#7d8894; }
+  .ok { color:#61d095; }
+  .bad { color:#ff6b6b; }
+  .dirty { color:#e0b34d; }
+  main { display:flex; gap:20px; padding:20px; align-items:flex-start;
+         flex-wrap:wrap; }
+  .stage { background:#000; border-radius:50%; width:340px; height:340px;
+           overflow:hidden; flex:none; }
+  .stage.square { border-radius:12px; background:#f7f7f8; }
+  .watch { width:200px; height:200px; }
+  #err { white-space:pre-wrap; background:#1b1113; border:1px solid #4a2126;
+         color:#ffb3b3; border-radius:8px; padding:12px; margin:0 20px 20px;
+         display:none; font-size:12px; }
+  .row { display:flex; align-items:center; gap:10px; margin-top:12px; }
+  input[type=range] { width:200px; accent-color:#3a6ba0; }
+  .path { font-size:12px; }
+  .panel { background:#15181d; border:1px solid #23282f; border-radius:10px;
+           padding:12px; }
+  .panel h3 { margin:0 0 8px; font-size:12px; text-transform:uppercase;
+              letter-spacing:.05em; color:#9aa4b2; display:flex; align-items:center;
+              gap:8px; }
+  #inspector { display:flex; gap:16px; flex:1; min-width:520px; }
+  #outliner { width:260px; flex:none; }
+  #tree { max-height:520px; overflow:auto; }
+  #tree ul { list-style:none; margin:0; padding-left:14px; }
+  #tree > ul { padding-left:0; }
+  #tree li { margin:1px 0; }
+  .node-row { display:flex; align-items:center; gap:6px; padding:3px 5px;
+              border-radius:5px; cursor:pointer; white-space:nowrap; }
+  .node-row:hover { background:#1e2329; }
+  .node-row.selected { background:#26456b; }
+  .node-row .twirl { width:12px; display:inline-block; color:#7d8894; font-size:10px; }
+  .node-row .nm { flex:1; overflow:hidden; text-overflow:ellipsis; }
+  .node-row.hidden-part .nm { color:#6b7480; text-decoration:line-through; }
+  .node-row input[type=checkbox] { margin:0; cursor:pointer; }
+  #props { flex:1; min-width:260px; }
+  #propsBody { max-height:520px; overflow:auto; }
+  .field { margin-bottom:10px; }
+  .field label { display:block; font-size:11px; color:#9aa4b2; margin-bottom:3px; }
+  .field-row { display:flex; gap:8px; }
+  .field-row .field { flex:1; }
+  .field input[type=text], .field input[type=number] { width:100%; }
+  .swatch-row { display:flex; align-items:center; gap:8px; }
+  input[type=color] { width:34px; height:26px; padding:0; border:1px solid #333a44;
+                       border-radius:5px; background:none; cursor:pointer; }
+  .anim-badge { font-size:11px; color:#e0b34d; background:#2a230f;
+                border:1px solid #4a3d1a; border-radius:5px; padding:2px 6px;
+                display:inline-flex; align-items:center; gap:6px; }
+  .subcard { border:1px solid #23282f; border-radius:8px; padding:8px 10px;
+             margin-bottom:10px; background:#101318; }
+  .subcard h4 { margin:0 0 6px; font-size:11px; color:#9aa4b2;
+                text-transform:uppercase; letter-spacing:.04em; }
+  .empty { color:#7d8894; font-style:italic; padding:8px 2px; }
+  .icon { opacity:.85; }
+</style>
+</head>
+<body>
+<header>
+  <strong>live preview</strong>
+  <select id="pick" aria-label="Choose a critter"></select>
+  <button id="playBtn">pause</button>
+  <button id="shapeBtn">square</button>
+  <span class="grow"></span>
+  <button id="exportBtn" class="small" title="Download the animation JSON, including any live edits">export json</button>
+  <button id="resetBtn" class="small" title="Discard live edits and reload from the built animation">reset edits</button>
+  <span id="dirtyFlag" class="dirty" style="display:none">unsaved edits (preview only)</span>
+  <span id="status" class="muted">connecting…</span>
+</header>
+<pre id="err"></pre>
+<main>
+  <div>
+    <div class="stage" id="stage"></div>
+    <div class="row">
+      <label for="frame" class="muted">frame</label>
+      <input type="range" id="frame" aria-label="Frame scrubber" min="0" max="89" value="0" step="1">
+      <span class="muted" id="frameLabel">frame 0</span>
+    </div>
+    <div class="row path muted" id="path"></div>
+    <div class="muted" style="margin-top:16px;">on a watch face</div>
+    <div class="stage watch" id="stageSmall"></div>
+  </div>
+
+  <div id="inspector">
+    <div class="panel" id="outliner">
+      <h3>Parts <span class="grow"></span>
+        <button class="small" id="showAllBtn" title="Clear all hide flags">show all</button>
+      </h3>
+      <div id="tree"></div>
+    </div>
+    <div class="panel" id="props">
+      <h3 id="propsTitle">Properties</h3>
+      <div id="propsBody"><div class="empty">Select a part on the left to inspect and edit it.</div></div>
+    </div>
+  </div>
+</main>
+<script src="/live_preview.js"></script>
+</body>
+</html>

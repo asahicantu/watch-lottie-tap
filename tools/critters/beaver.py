@@ -34,6 +34,12 @@ def beaver():
         filled(ellipse(118, 92, (0, 36)), "#4E3629", name="muzzle"), # Darker snout area
         dot_eye((-44, -14), 16), dot_eye((44, -14), 16),
         filled(ellipse(186, 172), fur, name="head"),
+        # A broad, soft body gives the beaver a friendly, plush silhouette.
+        filled(ellipse(44, 35, (-62, 96)), "#8D6350", name="left-paw"),
+        filled(ellipse(44, 35, (62, 96)), "#8D6350", name="right-paw"),
+        filled(ellipse(108, 96, (0, 106)), "#B08972", name="round-belly"),
+        filled(ellipse(176, 156, (0, 86)), fur, name="round-body"),
+        filled(ellipse(194, 170, (0, 92)), dark, name="body-shadow"),
         group([filled(ellipse(44, 44), fur, name="outer"),
                filled(ellipse(28, 28), dark, name="inner")],
               wiggle((-76, -64), amp=5, period=32), name="ear"),

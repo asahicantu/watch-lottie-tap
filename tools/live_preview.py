@@ -14,8 +14,18 @@ Editing a different animal switches the page to it, which means the preview
 follows you around as you work. `critter_parts.py` and `lottie_kit.py` are
 watched too, so a change to a shared feature rebuilds whatever is on screen.
 
+The page also has an inspector: a tree of every named layer/group in the
+animation (an eye, a pupil, a tuft - whatever `critter_parts.py` named its
+groups) with per-part visibility toggles and an "isolate" button, plus a
+properties panel to edit transform/fill/stroke/shape values live. Edits only
+touch the in-browser copy of the JSON; they are not written back to the .py
+source and are replaced whenever the file rebuilds. Use "export json" to save
+a snapshot, or "reset edits" to discard them.
+
 Nothing here is needed to build the app: `gen_critters.py` remains the thing
-that writes the assets. This is only for the edit loop.
+that writes the assets. This is only for the edit loop. The page itself lives
+in `tools/preview/live_preview.html` + `live_preview.js`, also hot-reloaded
+from disk on every request.
 """
 
 import argparse
@@ -145,149 +155,8 @@ def watch(selected):
 # serving
 # --------------------------------------------------------------------------- #
 
-PAGE = r"""<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Critter live preview</title>
-<script src="/lottie.min.js"></script>
-<style>
-  :root { color-scheme: dark; }
-  body { background:#0e1013; color:#e9edf2; margin:0;
-         font:13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
-  header { display:flex; align-items:center; gap:14px; padding:10px 16px;
-           border-bottom:1px solid #23282f; flex-wrap:wrap; }
-  select, button { background:#1a1e24; color:#e9edf2; border:1px solid #333a44;
-                   border-radius:6px; padding:5px 9px; font:inherit; }
-  button { cursor:pointer; }
-  .grow { flex:1; }
-  .muted { color:#7d8894; }
-  .ok { color:#61d095; }
-  .bad { color:#ff6b6b; }
-  main { display:flex; gap:24px; padding:20px; align-items:flex-start;
-         flex-wrap:wrap; }
-  .stage { background:#000; border-radius:50%; width:340px; height:340px;
-           overflow:hidden; flex:none; }
-  .stage.square { border-radius:12px; background:#f7f7f8; }
-  .watch { width:200px; height:200px; }
-  #err { white-space:pre-wrap; background:#1b1113; border:1px solid #4a2126;
-         color:#ffb3b3; border-radius:8px; padding:12px; margin:0 20px 20px;
-         display:none; font-size:12px; }
-  .row { display:flex; align-items:center; gap:10px; margin-top:12px; }
-  input[type=range] { width:260px; }
-  .path { font-size:12px; }
-</style>
-</head>
-<body>
-<header>
-  <strong>live preview</strong>
-  <select id="pick"></select>
-  <button id="playBtn">pause</button>
-  <button id="shapeBtn">square</button>
-  <span class="grow"></span>
-  <span id="status" class="muted">connecting…</span>
-</header>
-<pre id="err"></pre>
-<main>
-  <div>
-    <div class="stage" id="stage"></div>
-    <div class="row">
-      <input type="range" id="frame" min="0" max="89" value="0" step="1">
-      <span class="muted" id="frameLabel">frame 0</span>
-    </div>
-    <div class="row path muted" id="path"></div>
-  </div>
-  <div>
-    <div class="muted">on a watch face</div>
-    <div class="stage watch" id="stageSmall"></div>
-  </div>
-</main>
-<script>
-let anim = null, animSmall = null, version = -1, playing = true, current = null;
-const stage = document.getElementById("stage");
-const stageSmall = document.getElementById("stageSmall");
-const pick = document.getElementById("pick");
-const errBox = document.getElementById("err");
-const status = document.getElementById("status");
-const frame = document.getElementById("frame");
-const frameLabel = document.getElementById("frameLabel");
-
-function mount(data) {
-  [anim, animSmall].forEach(a => a && a.destroy());
-  const opts = { renderer:"svg", loop:true, autoplay:playing, animationData:data };
-  anim = lottie.loadAnimation(Object.assign({ container: stage }, opts));
-  animSmall = lottie.loadAnimation(Object.assign({ container: stageSmall }, opts));
-  frame.max = Math.max(0, Math.round(data.op) - 1);
-  anim.addEventListener("enterFrame", () => {
-    if (!playing) return;
-    frame.value = Math.round(anim.currentFrame);
-    frameLabel.textContent = "frame " + frame.value;
-  });
-  if (!playing) seek(+frame.value);
-}
-
-function seek(f) {
-  frameLabel.textContent = "frame " + f;
-  [anim, animSmall].forEach(a => a && a.goToAndStop(f, true));
-}
-
-async function refresh(state) {
-  const data = await (await fetch("/api/animation?name=" + state.name)).json();
-  current = state.name;
-  pick.value = state.name;
-  document.getElementById("path").textContent = "tools/critters/" + state.name + ".py";
-  mount(data);
-}
-
-async function poll() {
-  try {
-    const state = await (await fetch("/api/state")).json();
-    if (state.error) {
-      errBox.style.display = "block";
-      errBox.textContent = state.error;
-      status.className = "bad";
-      status.textContent = "build failed — showing last good version";
-    } else {
-      errBox.style.display = "none";
-      status.className = "ok";
-      status.textContent = "built in " + state.ms + " ms";
-    }
-    if (state.version !== version || state.name !== current) {
-      version = state.version;
-      if (!state.error || !anim) await refresh(state);
-      else { pick.value = state.name; current = state.name; }
-    }
-  } catch (e) {
-    status.className = "bad";
-    status.textContent = "server gone";
-  }
-  setTimeout(poll, 300);
-}
-
-document.getElementById("playBtn").onclick = (e) => {
-  playing = !playing;
-  e.target.textContent = playing ? "pause" : "play";
-  [anim, animSmall].forEach(a => a && (playing ? a.play() : a.pause()));
-};
-document.getElementById("shapeBtn").onclick = (e) => {
-  stage.classList.toggle("square");
-  e.target.textContent = stage.classList.contains("square") ? "round" : "square";
-};
-frame.oninput = () => {
-  if (playing) document.getElementById("playBtn").click();
-  seek(+frame.value);
-};
-pick.onchange = () => fetch("/api/select?name=" + pick.value);
-
-(async () => {
-  const names = await (await fetch("/api/names")).json();
-  pick.innerHTML = names.map(n => `<option>${n}</option>`).join("");
-  poll();
-})();
-</script>
-</body>
-</html>
-"""
+PAGE_PATH = os.path.join(TOOLS, "preview", "live_preview.html")
+PAGE_JS_PATH = os.path.join(TOOLS, "preview", "live_preview.js")
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -308,7 +177,12 @@ class Handler(BaseHTTPRequestHandler):
         args = dict(p.split("=", 1) for p in query.split("&") if "=" in p)
 
         if path == "/":
-            return self._send(200, PAGE, "text/html; charset=utf-8")
+            with open(PAGE_PATH, "rb") as fh:
+                return self._send(200, fh.read(), "text/html; charset=utf-8")
+
+        if path == "/live_preview.js":
+            with open(PAGE_JS_PATH, "rb") as fh:
+                return self._send(200, fh.read(), "application/javascript")
 
         if path == "/lottie.min.js":
             lib = os.path.join(TOOLS, "preview", "lottie.min.js")
