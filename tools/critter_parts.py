@@ -154,6 +154,35 @@ def smile(width=70, drop=26, y=0, color="#5a3b2e", w=8):
         color, w, name="smile")
 
 
+# --------------------------------------------------------------------------- #
+# features several critters share
+# --------------------------------------------------------------------------- #
+
+def tuft(x, y, spikes, color, w=22, h=46, spread=26, phase=0.0):
+    """A little crest or forelock: a fan of triangles."""
+    items = []
+    for i in range(spikes):
+        offset = (i - (spikes - 1) / 2.0) * spread
+        items.append(filled(triangle(w, h - abs(offset) * 0.35, tilt=offset * 0.30),
+                            color, transform(pos=(offset, 0)), name="spike"))
+    return group(items, wiggle((x, y), amp=5, period=30, phase=phase), name="tuft")
+
+
+def teeth(count, y, width, size=16, color="#ffffff"):
+    items = []
+    for i in range(count):
+        x = (i - (count - 1) / 2.0) * (width / max(1, count - 1))
+        items.append(filled(triangle(size, size * 1.1), color,
+                            transform(pos=(x, y), rotation=180), name="tooth"))
+    return group(items, name="teeth")
+
+
+def nostrils(dx, y, w=20, h=14, color="#7a5c4a"):
+    return group([filled(ellipse(w, h, (-dx, y)), color, name="nostril"),
+                  filled(ellipse(w, h, (dx, y)), color, name="nostril")],
+                 name="nostrils")
+
+
 def critter(name, parts, extra_layers=None):
     """Wraps `parts` in the idle motion, then scales the result to [FIT_BOX]."""
     root = group(parts, bob_transform(), name=name)

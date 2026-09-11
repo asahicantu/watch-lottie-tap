@@ -134,8 +134,9 @@ on its charger and on the same Wi-Fi as the PC.
 
 ## Adding a critter
 
-1. Drop `<id>.json` into `app/src/main/assets/animations/` (or add a builder to
-   `tools/critters_set_b.py` and regenerate).
+1. Drop `<id>.json` into `app/src/main/assets/animations/` (or add
+   `tools/critters/<id>.py` defining a function of the same name, and
+   regenerate — see *Where the animations come from*).
 2. Add one line to `CritterCatalog` with the id and an accent colour:
 
    ```kotlin
@@ -184,10 +185,24 @@ tools/lottie_bounds.py    measures the built geometry so each critter can be
                           scaled and centred to a common size
 tools/critter_parts.py    shared features — the idle bob, blinking eyes,
                           wiggling ears, slit pupils, teeth, tufts
-tools/critters_set_a.py   the first ten
-tools/critters_set_b.py   the other twenty
+tools/critters/<name>.py  one file per animal, named after it: gorilla.py
+                          defines gorilla(). Adding a file is all it takes
+                          to add an animal — nothing registers it anywhere
 tools/gen_critters.py     the runner
+tools/live_preview.py     the edit loop: rebuilds the animal you are editing
+                          and pushes it to the browser as you save it
 ```
+
+While working on an animal, run the live preview instead of regenerating by
+hand:
+
+```bash
+python tools/live_preview.py          # opens on the animal you edited last
+```
+
+It watches `tools/critters/*.py`, rebuilds in ~30 ms on save, switches the page
+to whichever animal you are editing, and shows the traceback in the page
+instead of dying if the file does not compile.
 
 Each animation is 300×300, 30 fps, 3 s, one shape layer, no image assets, no
 expressions, no fonts — the subset that renders fastest on a watch. All thirty

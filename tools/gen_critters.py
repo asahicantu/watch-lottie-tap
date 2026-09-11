@@ -8,8 +8,7 @@ it renders identically on a watch as it does in lottie-web.
 
   lottie_kit.py      Bodymovin JSON primitives
   critter_parts.py   shared features: idle bob, blinking eyes, wiggling ears
-  critters_set_a.py  the first ten
-  critters_set_b.py  the other twenty
+  critters/          one file per animal, named after it
 """
 
 import json
@@ -18,13 +17,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import critters  # noqa: E402
 from critter_parts import critter  # noqa: E402
-from critters_set_a import SET_A  # noqa: E402
-from critters_set_b import SET_B  # noqa: E402
-from critters_set_c import SET_C  # noqa: E402
-from critters_set_d import SET_D  # noqa: E402
-from critters_set_e import SET_E  # noqa: E402
-from critters_set_f import SET_F  # noqa: E402
 from lottie_kit import write  # noqa: E402
 
 OUT_DIR = os.path.join(
@@ -32,12 +26,7 @@ OUT_DIR = os.path.join(
     "app", "src", "main", "assets", "animations",
 )
 
-CRITTERS = dict(SET_A)
-CRITTERS.update(SET_B)
-CRITTERS.update(SET_C)
-CRITTERS.update(SET_D)
-CRITTERS.update(SET_E)
-CRITTERS.update(SET_F)
+CRITTERS = critters.load_all()
 
 
 def main():
