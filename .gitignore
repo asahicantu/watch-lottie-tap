@@ -7,8 +7,8 @@ build/
 captures/
 .externalNativeBuild
 .cxx
-tools/__pycache__/
-tools/critters/__pycache__/
+tools/**/__pycache__/
+release/
 
 # Auditioned by hand before anything moves into app/src/main/res/raw/
 sounds/

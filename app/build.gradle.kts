@@ -4,16 +4,24 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        create("release") {
+            storeFile = file("C:\\Users\\asahi\\.secrets\\android_keystore\\critters_keystore")
+            storePassword = "critters"
+            keyAlias = "critters"
+            keyPassword = "critters"
+        }
+    }
     namespace = "com.example.crittertap"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.crittertap"
+        applicationId = "com.asahicantu.crittertap"
         // Wear OS 3 (Galaxy Watch 4) and newer.
         minSdk = 30
         targetSdk = 36
-        versionCode = 202608271
-        versionName = "1.0"
+        versionCode = 202609101
+        versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -26,6 +34,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
