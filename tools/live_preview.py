@@ -1,31 +1,35 @@
-"""Live preview: edit an animal, save, watch it change in the browser.
+"""Live preview: edit an animal or a feeling, save, watch it change in the browser.
 
-    python tools/live_preview.py            # opens on the last animal you edited
+    python tools/live_preview.py            # opens on the last thing you edited
     python tools/live_preview.py gorilla    # start on one in particular
+    python tools/live_preview.py happy      # names are looked up in both catalogs
     python tools/live_preview.py --port 9000
 
-It serves one page on http://localhost:8765/ that rebuilds the animal you are
-looking at straight from `tools/critters/<name>.py` every time the file
-changes on disk - no restart, no regenerating all 120, no writing anything
-into the repo. Saving a file with a syntax error puts the traceback on the
-page and keeps the last good frame up, so a broken edit costs you nothing.
+It serves one page on http://localhost:8765/ that rebuilds whatever you are
+looking at straight from `tools/critters/<name>.py` or `tools/feelings/<name>.py`
+every time the file changes on disk - no restart, no regenerating everything,
+no writing anything into the repo. Saving a file with a syntax error puts the
+traceback on the page and keeps the last good frame up, so a broken edit costs
+you nothing.
 
-Editing a different animal switches the page to it, which means the preview
-follows you around as you work. `critter_parts.py` and `lottie_kit.py` are
-watched too, so a change to a shared feature rebuilds whatever is on screen.
+Editing a different animal or feeling switches the page to it, which means the
+preview follows you around as you work. Names are unique across both
+catalogs, so which one you meant is never ambiguous. `critter_parts.py`,
+`feeling_parts.py` and `lottie_kit.py` are all watched too, so a change to a
+shared feature rebuilds whatever is on screen.
 
 The page also has an inspector: a tree of every named layer/group in the
-animation (an eye, a pupil, a tuft - whatever `critter_parts.py` named its
+animation (an eye, a pupil, a tuft - whatever the parts module named its
 groups) with per-part visibility toggles and an "isolate" button, plus a
 properties panel to edit transform/fill/stroke/shape values live. Edits only
 touch the in-browser copy of the JSON; they are not written back to the .py
 source and are replaced whenever the file rebuilds. Use "export json" to save
 a snapshot, or "reset edits" to discard them.
 
-Nothing here is needed to build the app: `gen_critters.py` remains the thing
-that writes the assets. This is only for the edit loop. The page itself lives
-in `tools/preview/live_preview.html` + `live_preview.js`, also hot-reloaded
-from disk on every request.
+Nothing here is needed to build the app: `gen_critters.py`/`gen_feelings.py`
+remain the things that write the assets. This is only for the edit loop. The
+page itself lives in `tools/preview/live_preview.html` + `live_preview.js`,
+also hot-reloaded from disk on every request.
 """
 
 import argparse
@@ -43,10 +47,65 @@ TOOLS = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, TOOLS)
 
 import critters  # noqa: E402
+import feelings  # noqa: E402
 
-CRITTER_DIR = os.path.join(TOOLS, "critters")
-SHARED_FILES = ("critter_parts.py", "lottie_kit.py", "lottie_bounds.py")
 POLL_SECONDS = 0.25
+
+
+class Package(object):
+    """One `<name>.py`-per-item catalog: where its files live, how to rebuild
+    one, and which shared files should also trigger a rebuild when touched."""
+
+    def __init__(self, module, dir_, shared_files, build):
+        self.module = module
+        self.dir = dir_
+        self.shared_files = shared_files
+        self.build = build          # (name) -> animation dict, may raise
+
+    def names(self):
+        return self.module.names()
+
+    def path_of(self, name):
+        return self.module.path_of(name)
+
+
+def _build_critter(name):
+    critters.reset()
+    critter_parts = importlib.import_module("critter_parts")
+    return critter_parts.critter(name, critters.load(name)())
+
+
+def _build_feeling(name):
+    feelings.reset()
+    feeling_parts = importlib.import_module("feeling_parts")
+    parts, motion = feelings.load(name)()
+    return feeling_parts.feeling(name, parts, motion)
+
+
+PACKAGES = [
+    Package(critters, os.path.join(TOOLS, "critters"),
+            ("critter_parts.py", "lottie_kit.py", "lottie_bounds.py"),
+            _build_critter),
+    Package(feelings, os.path.join(TOOLS, "feelings"),
+            ("feeling_parts.py", "lottie_kit.py", "lottie_bounds.py"),
+            _build_feeling),
+]
+
+
+def all_names():
+    """Every animal and feeling name, sorted, from both catalogs combined."""
+    out = []
+    for pkg in PACKAGES:
+        out.extend(pkg.names())
+    return sorted(out)
+
+
+def package_of(name):
+    """Which [Package] `name` belongs to, or None if it is in neither."""
+    for pkg in PACKAGES:
+        if name in pkg.names():
+            return pkg
+    return None
 
 
 # --------------------------------------------------------------------------- #
@@ -70,10 +129,10 @@ class Build(object):
         started = time.time()
         animation, error = None, None
         try:
-            # forget the cached modules, so the file on disk is what runs
-            critters.reset()
-            critter_parts = importlib.import_module("critter_parts")
-            animation = critter_parts.critter(name, critters.load(name)())
+            pkg = package_of(name)
+            if pkg is None:
+                raise ValueError("no such animal or feeling: %r" % name)
+            animation = pkg.build(name)   # each build() resets its own cache
         except Exception:
             error = traceback.format_exc()
         with self.lock:
@@ -109,26 +168,28 @@ BUILD = Build()
 # --------------------------------------------------------------------------- #
 
 def snapshot():
-    """{path: mtime} for every source file the preview cares about."""
+    """{path: mtime} for every source file the preview cares about, across
+    every [Package]."""
     out = {}
-    for f in os.listdir(CRITTER_DIR):
-        if f.endswith(".py"):
-            p = os.path.join(CRITTER_DIR, f)
-            try:
+    for pkg in PACKAGES:
+        for f in os.listdir(pkg.dir):
+            if f.endswith(".py"):
+                p = os.path.join(pkg.dir, f)
+                try:
+                    out[p] = os.path.getmtime(p)
+                except OSError:
+                    pass
+        for f in pkg.shared_files:
+            p = os.path.join(TOOLS, f)
+            if os.path.exists(p):
                 out[p] = os.path.getmtime(p)
-            except OSError:
-                pass
-    for f in SHARED_FILES:
-        p = os.path.join(TOOLS, f)
-        if os.path.exists(p):
-            out[p] = os.path.getmtime(p)
     return out
 
 
 def watch(selected):
     """Rebuild whenever a watched file changes.
 
-    `selected` is a one-item list so the HTTP handler can change which animal
+    `selected` is a one-item list so the HTTP handler can change which item
     is on screen without this thread having to be restarted.
     """
     seen = snapshot()
@@ -139,10 +200,12 @@ def watch(selected):
         seen = now
         if not touched:
             continue
-        # if an animal file was the thing that changed, follow the edit
+        # if an item file was the thing that changed, follow the edit
         for p in touched:
             stem = os.path.splitext(os.path.basename(p))[0]
-            if os.path.dirname(p) == CRITTER_DIR and stem != "__init__":
+            owner = next((pkg for pkg in PACKAGES
+                          if os.path.dirname(p) == pkg.dir), None)
+            if owner is not None and stem != "__init__":
                 selected[0] = stem
                 break
         ok = BUILD.rebuild(selected[0])
@@ -190,7 +253,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, fh.read(), "application/javascript")
 
         if path == "/api/names":
-            return self._send(200, json.dumps(critters.names()),
+            return self._send(200, json.dumps(all_names()),
                               "application/json")
 
         if path == "/api/state":
@@ -199,7 +262,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/select":
             name = args.get("name", "")
-            if name in critters.names():
+            if package_of(name) is not None:
                 Handler.selected[0] = name
                 BUILD.rebuild(name)
             return self._send(200, json.dumps(BUILD.state()),
@@ -221,20 +284,21 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("critter", nargs="?", default=None,
-                        help="which animal to open on (default: the one edited "
-                             "most recently)")
+    parser.add_argument("item", nargs="?", default=None,
+                        help="which animal or feeling to open on (default: "
+                             "the one edited most recently)")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
 
-    available = critters.names()
-    name = args.critter
+    available = all_names()
+    name = args.item
     if name is None:
-        newest = max(available, key=lambda n: os.path.getmtime(critters.path_of(n)))
-        name = newest
+        newest_paths = [(pkg, n) for pkg in PACKAGES for n in pkg.names()]
+        pkg, name = max(newest_paths,
+                        key=lambda pn: os.path.getmtime(pn[0].path_of(pn[1])))
     if name not in available:
-        parser.error("no such animal: %s\n(try one of: %s ...)"
+        parser.error("no such animal or feeling: %s\n(try one of: %s ...)"
                      % (name, ", ".join(available[:6])))
 
     selected = [name]
@@ -245,8 +309,8 @@ def main():
 
     url = "http://localhost:%d/" % args.port
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    print("live preview on %s  (watching tools/critters/*.py)" % url)
-    print("editing any animal file switches the page to it; ctrl-c to stop")
+    print("live preview on %s  (watching tools/critters/*.py and tools/feelings/*.py)" % url)
+    print("editing any animal or feeling file switches the page to it; ctrl-c to stop")
     if not args.no_browser:
         threading.Timer(0.4, webbrowser.open, args=(url,)).start()
     try:
