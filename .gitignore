@@ -9,6 +9,7 @@ captures/
 .cxx
 tools/**/__pycache__/
 release/
+.worktrees/
 
 # Auditioned by hand before anything moves into app/src/main/res/raw/
 sounds/
