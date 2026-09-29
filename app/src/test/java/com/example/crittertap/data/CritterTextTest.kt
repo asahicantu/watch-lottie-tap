@@ -31,7 +31,7 @@ class CritterTextTest {
                 val text = CritterTexts.of(id, language)
                 assertTrue("$id/$language label", text.label.isNotBlank())
                 assertTrue("$id/$language description", text.description.isNotBlank())
-                assertTrue("$id/$language noise", text.noise.isNotBlank())
+                assertTrue("$id/$language noise", text.noise?.isNotBlank() == true)
             }
         }
     }

@@ -65,7 +65,7 @@ fun CritterApp() {
         }
         composable(Routes.PLAY) {
             val playViewModel: PlayViewModel = viewModel(
-                factory = PlayViewModel.factory(settings.catalogSize, settings.shufflingMode)
+                factory = PlayViewModel.factory(settings.catalogSize, settings.shufflingMode, settings.category)
             )
             PlayScreen(
                 language = settings.language,
@@ -81,12 +81,14 @@ fun CritterApp() {
                 strings = UiText.of(settings.language),
                 language = settings.language,
                 volume = settings.volume,
+                category = settings.category,
                 catalogSize = settings.catalogSize,
                 shufflingMode = settings.shufflingMode,
                 speakLabelOnly = settings.speakLabelOnly,
                 missingVoiceFor = voice.missingVoiceFor,
                 onLanguage = settings::updateLanguage,
                 onVolume = settings::updateVolume,
+                onCategory = settings::updateCategory,
                 onCatalogSize = settings::updateCatalogSize,
                 onShufflingMode = settings::updateShufflingMode,
                 onSpeakLabelOnly = settings::updateSpeakLabelOnly,

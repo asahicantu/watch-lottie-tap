@@ -79,7 +79,7 @@ class CritterVoice(
                 queuedRecording = critter.soundRes
                 val introText = if (speakLabelOnly) text.label else text.description
                 engine.speak(introText, volume, describeId(critter), flush = true)
-                if (critter.soundRes == null) {
+                if (critter.soundRes == null && text.noise != null) {
                     engine.silence(GAP_MILLIS, gapId(critter))
                     engine.speak(text.noise, volume, noiseId(critter), flush = false)
                 }
@@ -94,6 +94,8 @@ class CritterVoice(
      *
      * A recording needs no engine, so it plays regardless of [status]; the
      * spoken fallback does need one, so it is skipped when there isn't one.
+     * Items with no noise of their own (feelings) replay their description
+     * instead, so a repeat tap still says something.
      */
     fun replay(critter: Critter, text: CritterText) {
         stop()
@@ -102,7 +104,8 @@ class CritterVoice(
         if (recording != null) {
             player.play(recording, volume)
         } else if (status == Status.Ready) {
-            engine.speak(text.noise, volume, noiseId(critter), flush = true)
+            val replayText = text.noise ?: text.description
+            engine.speak(replayText, volume, noiseId(critter), flush = true)
         }
     }
 

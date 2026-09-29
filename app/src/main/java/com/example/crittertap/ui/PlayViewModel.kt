@@ -6,11 +6,14 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.crittertap.data.Category
 import com.example.crittertap.data.Critter
 import com.example.crittertap.data.CritterCatalog
 import com.example.crittertap.data.CritterShuffler
 import com.example.crittertap.data.CritterText
 import com.example.crittertap.data.CritterTexts
+import com.example.crittertap.data.FeelingCatalog
+import com.example.crittertap.data.FeelingTexts
 import com.example.crittertap.data.Language
 import com.example.crittertap.settings.ShufflingMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,9 +50,18 @@ class PlayViewModel(
     private val savedStateHandle: SavedStateHandle,
     catalogSize: Int = CritterCatalog.all.size,
     shufflingMode: ShufflingMode = ShufflingMode.Random,
+    category: Category = Category.ANIMALS,
 ) : ViewModel() {
 
-    private val critters = CritterCatalog.all.take(catalogSize)
+    private val textOf: (String, Language) -> CritterText = when (category) {
+        Category.ANIMALS -> CritterTexts::of
+        Category.FEELINGS -> FeelingTexts::of
+    }
+
+    private val critters = when (category) {
+        Category.ANIMALS -> CritterCatalog.all
+        Category.FEELINGS -> FeelingCatalog.all
+    }.take(catalogSize)
 
     private val shuffler = CritterShuffler(
         size = critters.size,
@@ -61,7 +73,7 @@ class PlayViewModel(
     private val _uiState = MutableStateFlow(
         PlayUiState(
             critter = critters[shuffler.current.takeIf { it >= 0 } ?: shuffler.next().also { saveShuffler() }],
-            text = CritterTexts.of(critters[shuffler.current].id, Language.ENGLISH), // Initial, will be updated by Screen
+            text = textOf(critters[shuffler.current].id, Language.ENGLISH), // Initial, will be updated by Screen
             index = shuffler.current,
             interactions = savedStateHandle[KEY_INTERACTIONS] ?: 0
         )
@@ -75,7 +87,7 @@ class PlayViewModel(
     /** Updates the state with the current [Language] and its associated text. */
     fun onLanguageChanged(newLanguage: Language) {
         currentLanguage = newLanguage
-        _uiState.update { it.copy(text = CritterTexts.of(it.critter.id, newLanguage)) }
+        _uiState.update { it.copy(text = textOf(it.critter.id, newLanguage)) }
     }
 
     /** Triggers the voice for the current critter and increments interactions. */
@@ -105,7 +117,7 @@ class PlayViewModel(
 
     private fun updateCritter(index: Int, onIntroduce: (Critter, CritterText) -> Unit) {
         val critter = critters[index]
-        val text = CritterTexts.of(critter.id, currentLanguage)
+        val text = textOf(critter.id, currentLanguage)
         val newInteractions = _uiState.value.interactions + 1
         savedStateHandle[KEY_INTERACTIONS] = newInteractions
         _uiState.update {
@@ -125,11 +137,12 @@ class PlayViewModel(
 
     companion object {
         /** Creates a factory that injects the current settings. */
-        fun factory(catalogSize: Int, shufflingMode: ShufflingMode) = viewModelFactory {
-            initializer {
-                val savedStateHandle = createSavedStateHandle()
-                PlayViewModel(savedStateHandle, catalogSize, shufflingMode)
+        fun factory(catalogSize: Int, shufflingMode: ShufflingMode, category: Category = Category.ANIMALS) =
+            viewModelFactory {
+                initializer {
+                    val savedStateHandle = createSavedStateHandle()
+                    PlayViewModel(savedStateHandle, catalogSize, shufflingMode, category)
+                }
             }
-        }
     }
 }

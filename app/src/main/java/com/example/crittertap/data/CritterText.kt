@@ -1,15 +1,17 @@
 package com.example.crittertap.data
 
 /**
- * What the watch shows and says for one critter.
+ * What the watch shows and says for one item (a critter or a feeling).
  *
  * A single tap speaks [description] and then [noise] — first the words that
- * describe the animal, then the sound the animal makes.
+ * describe the item, then the sound it makes. [noise] is null for items with
+ * no sound of their own (feelings): a tap speaks only the description, and a
+ * repeat tap replays that same description.
  */
 data class CritterText(
     val label: String,
     val description: String,
-    val noise: String,
+    val noise: String? = null,
 )
 
 object CritterTexts {

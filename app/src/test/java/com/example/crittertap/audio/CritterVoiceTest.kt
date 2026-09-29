@@ -287,14 +287,38 @@ class CritterVoiceTest {
     @Test
     fun `speakLabelOnly toggle switches between label and description`() {
         val (v, engine, _) = voice()
-        
+
         v.setSpeakLabelOnly(true)
         v.say(cat, text)
         assertEquals(listOf(text.label, text.noise), engine.spoken)
-        
+
         v.setSpeakLabelOnly(false)
         engine.calls.clear()
         v.say(cat, text)
         assertEquals(listOf(text.description, text.noise), engine.spoken)
+    }
+
+    @Test
+    fun `an item with no noise speaks only its description, with no gap`() {
+        val (v, engine, _) = voice()
+        val feeling = cat.copy(id = "happy", soundRes = null)
+        val feelingText = CritterText(label = "Happy", description = "Feeling happy.", noise = null)
+
+        v.say(feeling, feelingText)
+
+        assertEquals(listOf(feelingText.description), engine.spoken)
+        assertEquals("no gap without a noise to follow it",
+            0, engine.calls.filterIsInstance<FakeSpeechEngine.Call.Silence>().size)
+    }
+
+    @Test
+    fun `replaying an item with no noise repeats the description instead`() {
+        val (v, engine, _) = voice()
+        val feeling = cat.copy(id = "happy", soundRes = null)
+        val feelingText = CritterText(label = "Happy", description = "Feeling happy.", noise = null)
+
+        v.replay(feeling, feelingText)
+
+        assertEquals(listOf(feelingText.description), engine.spoken)
     }
 }

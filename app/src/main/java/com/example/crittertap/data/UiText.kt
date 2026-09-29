@@ -28,6 +28,9 @@ data class UiStrings(
     val voiceDetail: String,
     val labelOnly: String,
     val fullDescription: String,
+    val category: String,
+    val animals: String,
+    val feelings: String,
 )
 
 object UiText {
@@ -51,6 +54,9 @@ object UiText {
         voiceDetail = "Voice Detail",
         labelOnly = "Label",
         fullDescription = "Full",
+        category = "Category to show",
+        animals = "Animals",
+        feelings = "Feelings",
     )
 
     private val spanish = UiStrings(
@@ -72,6 +78,9 @@ object UiText {
         voiceDetail = "Detalle de voz",
         labelOnly = "Etiqueta",
         fullDescription = "Completo",
+        category = "Categoría a mostrar",
+        animals = "Animales",
+        feelings = "Sentimientos",
     )
 
     fun of(language: Language): UiStrings = when (language) {

@@ -25,7 +25,7 @@ import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.tooling.preview.devices.WearDevices
-import com.example.crittertap.data.CritterCatalog
+import com.example.crittertap.data.Category
 import com.example.crittertap.data.Language
 import com.example.crittertap.data.UiStrings
 import com.example.crittertap.data.UiText
@@ -45,11 +45,13 @@ fun SettingsScreen(
     strings: UiStrings,
     language: Language,
     volume: Float,
+    category: Category,
     catalogSize: Int,
     shufflingMode: ShufflingMode,
     speakLabelOnly: Boolean,
     onLanguage: (Language) -> Unit,
     onVolume: (Float) -> Unit,
+    onCategory: (Category) -> Unit,
     onCatalogSize: (Int) -> Unit,
     onShufflingMode: (ShufflingMode) -> Unit,
     onSpeakLabelOnly: (Boolean) -> Unit,
@@ -82,10 +84,34 @@ fun SettingsScreen(
             )
         }
 
+        item { SectionLabel(strings.category) }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    ChoiceButton(
+                        label = strings.animals,
+                        selected = category == Category.ANIMALS,
+                        onClick = { onCategory(Category.ANIMALS) }
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ChoiceButton(
+                        label = strings.feelings,
+                        selected = category == Category.FEELINGS,
+                        onClick = { onCategory(Category.FEELINGS) }
+                    )
+                }
+            }
+        }
+
         item { SectionLabel(strings.catalogSize) }
         item {
             CatalogSizeRow(
                 size = catalogSize,
+                category = category,
                 onSize = onCatalogSize,
             )
         }
@@ -170,9 +196,9 @@ private fun SectionLabel(text: String) {
 }
 
 @Composable
-private fun CatalogSizeRow(size: Int, onSize: (Int) -> Unit) {
+private fun CatalogSizeRow(size: Int, category: Category, onSize: (Int) -> Unit) {
     val step = 10
-    val max = CritterCatalog.all.size
+    val max = SettingsRepository.maxCatalogSizeFor(category)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
@@ -259,11 +285,13 @@ private fun SettingsScreenPreview() {
             strings = UiText.of(Language.ENGLISH),
             language = Language.ENGLISH,
             volume = 0.7f,
+            category = Category.ANIMALS,
             catalogSize = 30,
             shufflingMode = ShufflingMode.Random,
             speakLabelOnly = false,
             onLanguage = {},
             onVolume = {},
+            onCategory = {},
             onCatalogSize = {},
             onShufflingMode = {},
             onSpeakLabelOnly = {},

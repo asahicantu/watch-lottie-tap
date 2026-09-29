@@ -1,11 +1,14 @@
 package com.example.crittertap.ui
 
 import androidx.lifecycle.SavedStateHandle
+import com.example.crittertap.data.Category
 import com.example.crittertap.data.CritterCatalog
+import com.example.crittertap.data.FeelingCatalog
 import com.example.crittertap.data.Language
 import com.example.crittertap.settings.ShufflingMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -88,15 +91,47 @@ class PlayViewModelTest {
     @Test
     fun `sequential mode follows catalog order`() {
         val viewModel = PlayViewModel(
-            SavedStateHandle(), 
-            catalogSize = 10, 
+            SavedStateHandle(),
+            catalogSize = 10,
             shufflingMode = ShufflingMode.Sequential
         )
-        
+
         // Check first 5 critters
         for (i in 0 until 5) {
             assertEquals(i, viewModel.uiState.value.index)
             viewModel.onNextCritterTriggered { _, _ -> }
         }
+    }
+
+    @Test
+    fun `the feelings category draws from FeelingCatalog instead of CritterCatalog`() {
+        val feelings = FeelingCatalog.all
+        val viewModel = PlayViewModel(
+            SavedStateHandle(),
+            catalogSize = feelings.size,
+            category = Category.FEELINGS,
+        )
+
+        val state = viewModel.uiState.value
+        assertTrue(feelings.any { it.id == state.critter.id })
+        assertTrue(critters.none { it.id == state.critter.id })
+    }
+
+    @Test
+    fun `a feeling's text carries no noise`() {
+        val viewModel = PlayViewModel(
+            SavedStateHandle(),
+            catalogSize = FeelingCatalog.all.size,
+            category = Category.FEELINGS,
+        )
+
+        assertNull(viewModel.uiState.value.text.noise)
+    }
+
+    @Test
+    fun `the default category is animals`() {
+        val viewModel = PlayViewModel(SavedStateHandle(), catalogSize = critters.size)
+        assertTrue(critters.any { it.id == viewModel.uiState.value.critter.id })
+        assertEquals("cat", CritterCatalog.all.first().id)
     }
 }

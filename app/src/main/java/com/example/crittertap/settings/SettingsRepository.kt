@@ -6,7 +6,9 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import com.example.crittertap.data.Category
 import com.example.crittertap.data.CritterCatalog
+import com.example.crittertap.data.FeelingCatalog
 import com.example.crittertap.data.Language
 
 enum class ShufflingMode { Sequential, Random }
@@ -32,7 +34,13 @@ class SettingsRepository(context: Context) {
     var volume by mutableFloatStateOf(prefs.getFloat(KEY_VOLUME, DEFAULT_VOLUME))
         private set
 
-    var catalogSize by mutableIntStateOf(prefs.getInt(KEY_CATALOG_SIZE, CritterCatalog.all.size))
+    var category by mutableStateOf(Category.fromTag(prefs.getString(KEY_CATEGORY, null)))
+        private set
+
+    var catalogSize by mutableIntStateOf(
+        prefs.getInt(KEY_CATALOG_SIZE, maxCatalogSizeFor(category))
+            .coerceIn(MIN_CATALOG_SIZE, maxCatalogSizeFor(category))
+    )
         private set
 
     var shufflingMode by mutableStateOf(
@@ -55,9 +63,16 @@ class SettingsRepository(context: Context) {
     }
 
     fun updateCatalogSize(value: Int) {
-        val clamped = value.coerceIn(MIN_CATALOG_SIZE, CritterCatalog.all.size)
+        val clamped = value.coerceIn(MIN_CATALOG_SIZE, maxCatalogSizeFor(category))
         catalogSize = clamped
         prefs.edit().putInt(KEY_CATALOG_SIZE, clamped).apply()
+    }
+
+    /** Switches the content shown on the play screen, re-clamping the catalog size to fit. */
+    fun updateCategory(value: Category) {
+        category = value
+        prefs.edit().putString(KEY_CATEGORY, value.tag).apply()
+        updateCatalogSize(catalogSize)
     }
 
     fun updateShufflingMode(value: ShufflingMode) {
@@ -78,9 +93,16 @@ class SettingsRepository(context: Context) {
         private const val FILE = "critter_settings"
         private const val KEY_LANGUAGE = "language"
         private const val KEY_VOLUME = "volume"
+        private const val KEY_CATEGORY = "category"
         private const val KEY_CATALOG_SIZE = "catalog_size"
         private const val KEY_SHUFFLING_MODE = "shuffling_mode"
         private const val KEY_SPEAK_LABEL_ONLY = "speak_label_only"
         private const val DEFAULT_VOLUME = 0.9f
+
+        /** How many items [category] actually has to offer. */
+        fun maxCatalogSizeFor(category: Category): Int = when (category) {
+            Category.ANIMALS -> CritterCatalog.all.size
+            Category.FEELINGS -> FeelingCatalog.all.size
+        }
     }
 }
