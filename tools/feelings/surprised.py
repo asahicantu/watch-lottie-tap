@@ -1,12 +1,15 @@
-from feeling_parts import bounce, brow, ellipse, face, filled, std_eyes, transform
+from feeling_parts import backdrop, bounce, brow, head, human_eye, open_mouth
 
-FACE = "#F5A623"
+COLOR = "#F5A623"
 
 
 def surprised():
     return [
-        filled(ellipse(22, 28), "#2b2b2b", tr=transform(pos=(0, 18)), name="mouth-o"),
-        brow((-17, -26), 8), brow((17, -26), -8),
-        *std_eyes(w=20, h=24, y=-10),
-        face(FACE),
+        open_mouth(22, 28, (0, 36)),
+        brow((-23, -32), 10),
+        brow((23, -32), -10),
+        human_eye((-23, -10), w=30, h=30),
+        human_eye((23, -10), w=30, h=30),
+        head(),
+        backdrop(COLOR),
     ], lambda layer: bounce(layer, amp=10, period=20)

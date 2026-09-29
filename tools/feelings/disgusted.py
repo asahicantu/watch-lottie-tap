@@ -1,12 +1,15 @@
-from feeling_parts import brow, eye, face, mouth, sway
+from feeling_parts import backdrop, brow, head, human_eye, mouth, sway
 
-FACE = "#8BC34A"
+COLOR = "#8BC34A"
 
 
 def disgusted():
     return [
-        mouth([(-20, 18), (-6, 26), (6, 10), (20, 20)]),
-        brow((-17, -20), 14), brow((17, -20), -6),
-        eye((-17, -8), w=14, h=10), eye((17, -8), w=14, h=16),
-        face(FACE),
+        mouth([(-18, 26), (-4, 34), (6, 20), (18, 28)], pos=(0, 30), width=6),
+        brow((-23, -22), 14),
+        brow((23, -22), -4),
+        human_eye((-23, -8), w=26, h=16),
+        human_eye((23, -8), w=26, h=20),
+        head(),
+        backdrop(COLOR),
     ], lambda layer: sway(layer, amp=4, period=50)

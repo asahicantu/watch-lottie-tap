@@ -1,12 +1,15 @@
-from feeling_parts import brow, face, filled_mouth, std_eyes, sway
+from feeling_parts import backdrop, brow, filled_mouth, head, human_eye, sway
 
-FACE = "#D4A017"
+COLOR = "#D4A017"
 
 
 def proud():
     return [
-        filled_mouth([(-24, 10), (0, 26), (24, 10), (0, 16)]),
-        brow((-17, -22), -10), brow((17, -22), 10),
-        *std_eyes(),
-        face(FACE),
+        filled_mouth([(-24, 6), (0, 26), (24, 6), (0, 14)], pos=(0, 36)),
+        brow((-23, -26), -8),
+        brow((23, -26), 8),
+        human_eye((-23, -8), h=20),
+        human_eye((23, -8), h=20),
+        head(),
+        backdrop(COLOR),
     ], lambda layer: sway(layer, amp=6, period=80)

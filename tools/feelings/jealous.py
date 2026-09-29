@@ -1,12 +1,15 @@
-from feeling_parts import brow, eye, face, mouth, sway
+from feeling_parts import backdrop, brow, head, human_eye, mouth, sway
 
-FACE = "#7CB342"
+COLOR = "#7CB342"
 
 
 def jealous():
     return [
-        mouth([(-18, 20), (0, 14), (18, 20)], width=6),
-        brow((-17, -18), -16), brow((17, -18), 4),
-        eye((-17, -8), w=14, h=10), eye((17, -8), w=14, h=10),
-        face(FACE),
+        mouth([(-18, 30), (0, 22), (18, 30)], pos=(0, 34), width=6),
+        brow((-23, -22), 16),
+        brow((23, -22), -4),
+        human_eye((-23, -8), w=24, h=16),
+        human_eye((23, -8), w=24, h=16),
+        head(),
+        backdrop(COLOR),
     ], lambda layer: sway(layer, amp=5, period=55)

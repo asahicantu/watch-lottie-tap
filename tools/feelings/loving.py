@@ -1,13 +1,15 @@
-from feeling_parts import closed_eye, face, filled_mouth, heart_half, pulse
+from feeling_parts import backdrop, closed_eye, filled_mouth, head, heart, pulse
 
-FACE = "#F06292"
+COLOR = "#F06292"
+HEART_COLOR = "#FF4D6D"
 
 
 def loving():
     return [
-        heart_half((-16, -30), 45, FACE, name="heart-a"),
-        heart_half((16, -30), -45, FACE, name="heart-b"),
-        filled_mouth([(-20, 8), (0, 24), (20, 8), (0, 14)]),
-        closed_eye((-17, -8)), closed_eye((17, -8)),
-        face(FACE),
+        heart((-42, -58), HEART_COLOR, size=22, rotation=-10, name="heart-a"),
+        heart((42, -58), HEART_COLOR, size=22, rotation=10, name="heart-b"),
+        filled_mouth([(-20, 6), (0, 24), (20, 6), (0, 12)], pos=(0, 36)),
+        closed_eye((-23, -6)), closed_eye((23, -6)),
+        head(),
+        backdrop(COLOR),
     ], lambda layer: pulse(layer, base=100, amp=10, period=50)

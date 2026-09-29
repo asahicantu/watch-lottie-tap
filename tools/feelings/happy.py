@@ -1,11 +1,12 @@
-from feeling_parts import bounce, face, filled_mouth, std_eyes
+from feeling_parts import backdrop, bounce, filled_mouth, head, std_eyes
 
-FACE = "#FFC93C"
+COLOR = "#FFC93C"
 
 
 def happy():
     return [
-        filled_mouth([(-28, 6), (0, 34), (28, 6), (0, 14)]),
+        filled_mouth([(-22, 4), (0, 26), (22, 4), (0, 10)], pos=(0, 38)),
         *std_eyes(),
-        face(FACE),
+        head(),
+        backdrop(COLOR),
     ], bounce

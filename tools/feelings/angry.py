@@ -1,12 +1,15 @@
-from feeling_parts import brow, eye, face, mouth, shake
+from feeling_parts import backdrop, brow, head, human_eye, mouth, shake
 
-FACE = "#E15554"
+COLOR = "#E15554"
 
 
 def angry():
     return [
-        mouth([(-22, 24), (0, 14), (22, 24)], width=7),
-        brow((-17, -18), -18), brow((17, -18), 18),
-        eye((-17, -8), h=12), eye((17, -8), h=12),
-        face(FACE),
+        mouth([(-20, 30), (0, 18), (20, 30)], pos=(0, 34), width=7),
+        brow((-23, -22), 22),
+        brow((23, -22), -22),
+        human_eye((-23, -6), h=18),
+        human_eye((23, -6), h=18),
+        head(),
+        backdrop(COLOR),
     ], shake

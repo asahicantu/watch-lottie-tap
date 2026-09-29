@@ -1,13 +1,15 @@
-from feeling_parts import brow, ellipse, face, filled, spin_wobble, transform
+from feeling_parts import backdrop, brow, head, human_eye, open_mouth, spin_wobble
 
-FACE = "#4FC3F7"
+COLOR = "#4FC3F7"
 
 
 def curious():
     return [
-        filled(ellipse(16, 18), "#2b2b2b", tr=transform(pos=(4, 16)), name="mouth-o"),
-        brow((-17, -24), 10), brow((17, -28), -22),
-        filled(ellipse(15, 17), "#2b2b2b", tr=transform(pos=(-17, -8)), name="eye"),
-        filled(ellipse(16, 19), "#2b2b2b", tr=transform(pos=(17, -8)), name="eye"),
-        face(FACE),
+        open_mouth(16, 18, (4, 34), tongue=False),
+        brow((-23, -30), 12),
+        brow((23, -34), -22),
+        human_eye((-23, -8), w=26, h=22),
+        human_eye((23, -8), w=28, h=24),
+        head(),
+        backdrop(COLOR),
     ], lambda layer: spin_wobble(layer, amp=8, period=65)

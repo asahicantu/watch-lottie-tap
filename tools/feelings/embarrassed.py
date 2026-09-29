@@ -1,13 +1,15 @@
-from feeling_parts import blush, face, jitter, mouth, std_eyes
+from feeling_parts import backdrop, blush, head, human_eye, jitter, mouth
 
-FACE = "#F4989C"
+COLOR = "#F4989C"
 
 
 def embarrassed():
     return [
-        blush((-40, 6), name="blush-l"),
-        blush((40, 6), name="blush-r"),
-        mouth([(-16, 16), (0, 22), (16, 16)], width=5),
-        *std_eyes(w=12, h=14),
-        face(FACE),
+        blush((-58, 34), name="blush-l"),
+        blush((58, 34), name="blush-r"),
+        mouth([(-14, 30), (0, 34), (14, 30)], pos=(0, 34), width=5),
+        human_eye((-23, -6), w=26, h=18, lash=False),
+        human_eye((23, -6), w=26, h=18, lash=False),
+        head(),
+        backdrop(COLOR),
     ], lambda layer: jitter(layer, amp=3, period=14)
