@@ -1,15 +1,18 @@
-from feeling_parts import backdrop, bounce, brow, head, human_eye, open_mouth
+from feeling_parts import backdrop, bounce, brows, eyes, head, open_mouth, shock_lines
 
 COLOR = "#F5A623"
 
 
 def surprised():
     return [
-        open_mouth(22, 28, (0, 36)),
-        brow((-23, -32), 10),
-        brow((23, -32), -10),
-        human_eye((-23, -10), w=30, h=30),
-        human_eye((23, -10), w=30, h=30),
+        shock_lines((-94, -58), -1),
+        shock_lines((94, -58), 1),
+        open_mouth(24, 30, (0, 54), kind="oval", teeth=False),
+        # brows shoot up with each hop
+        *brows(y=-42, tilt=2, arch=7, pos_path=[
+            (0, (0, 0)), (0.2, (0, -5)), (0.5, (0, 0)), (0.7, (0, -5)), (1, (0, 0)),
+        ]),
+        *eyes(w=34, h=34, iris_scale=0.7),
         head(),
         backdrop(COLOR),
-    ], lambda layer: bounce(layer, amp=10, period=20)
+    ], lambda layer: bounce(layer, amp=10, period=45)

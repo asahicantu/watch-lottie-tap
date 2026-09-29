@@ -1,13 +1,15 @@
-from feeling_parts import backdrop, droop, head, human_eye, mouth
+from feeling_parts import backdrop, brows, droop, ellipsis, eyes, head, smile
 
 COLOR = "#5C7A99"
 
 
 def lonely():
     return [
-        mouth([(-18, 28), (0, 22), (18, 28)], pos=(0, 34), width=5),
-        human_eye((-23, -6), w=24, h=18, lash=False),
-        human_eye((23, -6), w=24, h=18, lash=False),
-        head(),
+        ellipsis((70, -80)),
+        smile(w=22, depth=-5, pos=(0, 50), width=4.5, dimples=False),
+        *brows(y=-30, tilt=12, arch=3),
+        # glossy eyes looking down and aside
+        *eyes(w=28, h=24, lid=0.28, tilt=3, look=(-4, 5), glossy=True),
+        head(cheeks=30),
         backdrop(COLOR),
     ], droop

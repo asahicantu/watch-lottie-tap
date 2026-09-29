@@ -1,13 +1,16 @@
-from feeling_parts import backdrop, bounce, head, mouth, spark, std_eyes
+from feeling_parts import GOLD, backdrop, bounce, brows, eyes, head, smile, twinkle
 
 COLOR = "#6FCF97"
 
 
 def hopeful():
     return [
-        spark((0, -72), color="#FFE066", size=9),
-        mouth([(-18, 20), (0, 28), (18, 20)], pos=(0, 34), width=5),
-        *std_eyes(),
+        twinkle((56, -86), GOLD, size=12, period=45),
+        twinkle((78, -58), GOLD, size=7, period=45, delay=20),
+        smile(w=24, depth=7, pos=(0, 48), width=4.5),
+        *brows(y=-36, tilt=12, arch=4),
+        # looking up at something, eyes shining
+        *eyes(w=30, h=28, look=(3, -5), shine=True, glossy=True),
         head(),
         backdrop(COLOR),
-    ], lambda layer: bounce(layer, amp=8, period=60)
+    ], lambda layer: bounce(layer, amp=8, period=90)

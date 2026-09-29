@@ -1,15 +1,19 @@
-from feeling_parts import backdrop, brow, head, human_eye, mouth, spin_wobble
+from feeling_parts import (
+    backdrop, brow, eyes, head, question_mark, spin_wobble, wavy_mouth,
+)
 
 COLOR = "#B39DDB"
 
 
 def confused():
     return [
-        mouth([(-16, 30), (0, 24), (16, 32)], pos=(0, 34), width=5),
-        brow((-23, -28), 20),
-        brow((23, -32), -4),
-        human_eye((-23, -8), w=26, h=20),
-        human_eye((23, -8), w=26, h=20),
+        question_mark((74, -78)),
+        wavy_mouth(w=26, amp=3, waves=1.5, pos=(2, 50), rotation=-6),
+        brow((-30, -38), -1, tilt=10, arch=6),
+        brow((30, -26), 1, tilt=-8, arch=2),
+        *eyes(left={"w": 32, "h": 30}, right={"w": 28, "h": 22, "lid": 0.25},
+              look_path=[(0, (-4, -4)), (0.45, (-4, -4)), (0.55, (4, -4)),
+                         (0.95, (4, -4)), (1, (-4, -4))]),
         head(),
         backdrop(COLOR),
-    ], lambda layer: spin_wobble(layer, amp=10, period=75)
+    ], lambda layer: spin_wobble(layer, amp=10, period=90)
