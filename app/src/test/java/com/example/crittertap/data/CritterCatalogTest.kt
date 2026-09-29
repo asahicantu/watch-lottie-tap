@@ -1,5 +1,6 @@
 package com.example.crittertap.data
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -13,6 +14,14 @@ class CritterCatalogTest {
         val assets = CritterCatalog.all.map { it.assetPath }
         assertEquals(assets.size, assets.toSet().size)
         assertTrue(assets.all { it.startsWith("animations/") && it.endsWith(".json") })
+    }
+
+    @Test
+    fun `every critter's animation file actually exists`() {
+        CritterCatalog.all.forEach { critter ->
+            val file = File("src/main/assets/${critter.assetPath}")
+            assertTrue("missing asset for ${critter.id}: ${file.path}", file.exists())
+        }
     }
 
     @Test

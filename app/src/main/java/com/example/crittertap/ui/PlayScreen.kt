@@ -80,7 +80,8 @@ private val HINT_LINE_HEIGHT = 22.dp
  *
  * Interactions:
  * * **Tap** — the first time a critter appears, says its description, then
- *   the noise it makes; tapping it again just replays the noise.
+ *   the noise it makes; tapping it again just replays the noise (or, for an
+ *   item with no noise of its own, repeats the description).
  * * **Double tap** — brings on the next critter (and introduces it).
  * * **Rotating bezel / crown** — steps through the catalog in order.
  *
