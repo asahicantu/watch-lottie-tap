@@ -1,5 +1,8 @@
 *.iml
 .gradle/
+.gitignore~
+.gitignore.*
+.worktrees/
 local.properties
 .idea/
 .DS_Store
@@ -9,6 +12,9 @@ captures/
 .cxx
 tools/**/__pycache__/
 release/
-
+./**/*.aab
+app/release/**
+./**/release/**
+./**/release/
 # Auditioned by hand before anything moves into app/src/main/res/raw/
 sounds/

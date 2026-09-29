@@ -16,7 +16,7 @@ import com.example.crittertap.data.Language
  * recording in place of the spoken noise, started when the description ends.
  *
  * Once it is already on screen, a further tap calls for [replay] instead —
- * just the noise again, without repeating the description.
+ * the critter's name, then its noise, without repeating the description.
  *
  * Engines initialise asynchronously, so a request made before one is ready is
  * held in [pending]. Watches with no engine at all end up in
@@ -47,7 +47,7 @@ class CritterVoice(
     private var volume = 1f
     private var speakLabelOnly = false
 
-    private data class Utterance(val critter: Critter, val text: CritterText)
+    private data class Utterance(val critter: Critter, val text: CritterText, val nameOnly: Boolean)
 
     init {
         engine.onUtteranceDone(::onUtteranceDone)
@@ -58,7 +58,10 @@ class CritterVoice(
                 SpeechEngine.Readiness.NoAudioOutput -> Status.NoAudioOutput
             }
             if (status == Status.Ready) applyLanguage()
-            pending?.let { pending = null; say(it.critter, it.text) }
+            pending?.let {
+                pending = null
+                if (it.nameOnly) replay(it.critter, it.text) else say(it.critter, it.text)
+            }
         }
     }
 
@@ -70,7 +73,7 @@ class CritterVoice(
         stop()
         if (volume <= 0f) return
         when (status) {
-            Status.Starting -> pending = Utterance(critter, text)
+            Status.Starting -> pending = Utterance(critter, text, nameOnly = false)
             // No text-to-speech engine (the emulator, some watches) means the
             // description can't be spoken, but a bundled recording needs no
             // engine at all and can still play.
@@ -89,20 +92,29 @@ class CritterVoice(
     }
 
     /**
-     * Replays just [critter]'s noise — no description. For a critter already
-     * on screen, a further tap should not repeat the introduction.
+     * Says [critter]'s name, then its noise — no description. For a critter
+     * already on screen, a tap should name it again without repeating the
+     * whole introduction.
      *
-     * A recording needs no engine, so it plays regardless of [status]; the
-     * spoken fallback does need one, so it is skipped when there isn't one.
+     * The name needs an engine; a bundled recording does not, so with no
+     * engine the recording still plays on its own, and a spoken-noise critter
+     * stays quiet.
      */
     fun replay(critter: Critter, text: CritterText) {
         stop()
         if (volume <= 0f) return
-        val recording = critter.soundRes
-        if (recording != null) {
-            player.play(recording, volume)
-        } else if (status == Status.Ready) {
-            engine.speak(text.noise, volume, noiseId(critter), flush = true)
+        when (status) {
+            Status.Starting -> pending = Utterance(critter, text, nameOnly = true)
+            Status.NoEngine, Status.NoAudioOutput -> critter.soundRes?.let { player.play(it, volume) }
+            Status.Ready -> {
+                queuedRecording = critter.soundRes
+                engine.speak(text.label, volume, nameId(critter), flush = true)
+                if (critter.soundRes == null) {
+                    engine.silence(GAP_MILLIS, gapId(critter))
+                    engine.speak(text.noise, volume, noiseId(critter), flush = false)
+                }
+                // With a recording, the name finishing starts the player.
+            }
         }
     }
 
@@ -136,7 +148,7 @@ class CritterVoice(
 
     private fun onUtteranceDone(utteranceId: String) {
         val sound = queuedRecording ?: return
-        if (!utteranceId.endsWith(DESCRIBE_SUFFIX)) return
+        if (!utteranceId.endsWith(DESCRIBE_SUFFIX) && !utteranceId.endsWith(NAME_SUFFIX)) return
         queuedRecording = null
         player.play(sound, volume)
     }
@@ -146,11 +158,13 @@ class CritterVoice(
     }
 
     private fun describeId(critter: Critter) = "${critter.id}$DESCRIBE_SUFFIX"
+    private fun nameId(critter: Critter) = "${critter.id}$NAME_SUFFIX"
     private fun gapId(critter: Critter) = "${critter.id}-gap"
     private fun noiseId(critter: Critter) = "${critter.id}-noise"
 
     companion object {
         const val GAP_MILLIS = 280L
         const val DESCRIBE_SUFFIX = "-describe"
+        const val NAME_SUFFIX = "-name"
     }
 }

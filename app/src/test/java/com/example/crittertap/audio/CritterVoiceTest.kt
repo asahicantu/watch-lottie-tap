@@ -217,20 +217,40 @@ class CritterVoiceTest {
     }
 
     @Test
-    fun `replay speaks just the noise, not the description`() {
+    fun `replay says the name, then a gap, then the noise - not the description`() {
         val (v, engine, _) = voice()
         v.replay(cat, text)
-        assertEquals(listOf(text.noise), engine.spoken)
+        assertEquals(listOf(text.label, text.noise), engine.spoken)
+        val order = engine.calls.filter { it !is FakeSpeechEngine.Call.Stop }
+        assertTrue(order[1] is FakeSpeechEngine.Call.Silence)
+        val speech = engine.calls.filterIsInstance<FakeSpeechEngine.Call.Speak>()
+        assertTrue("the name should cut off whatever was playing", speech[0].flush)
+        assertTrue("the noise must not cut off the name", !speech[1].flush)
     }
 
     @Test
-    fun `replay plays the recording instead of speaking, when one is bundled`() {
+    fun `replay says the name, then plays the recording once the name is done`() {
         val (v, engine, player) = voice()
         val withSound = Critter(id = "cat", assetPath = cat.assetPath, accent = cat.accent, soundRes = 55)
         v.replay(withSound, text)
-        assertEquals("a recording replaces the spoken noise entirely",
-            emptyList<String>(), engine.spoken)
+        assertEquals("a recording replaces the spoken noise",
+            listOf(text.label), engine.spoken)
+        assertEquals("the recording waits for the name", emptyList<Pair<Int, Float>>(),
+            player.played)
+
+        engine.finish("cat${CritterVoice.NAME_SUFFIX}")
         assertEquals(listOf(55 to 1f), player.played)
+    }
+
+    @Test
+    fun `replay made before the engine is ready says the name once it is`() {
+        val engine = FakeSpeechEngine()
+        val v = CritterVoice(engine, FakeSoundPlayer())
+        v.replay(cat, text)
+        assertEquals(emptyList<String>(), engine.spoken)
+
+        engine.becomeReady()
+        assertEquals(listOf(text.label, text.noise), engine.spoken)
     }
 
     @Test
