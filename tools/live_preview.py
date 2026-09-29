@@ -44,6 +44,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 TOOLS = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.dirname(TOOLS)
 sys.path.insert(0, TOOLS)
 
 import critters  # noqa: E402
@@ -118,6 +119,7 @@ class Build(object):
     def __init__(self):
         self.lock = threading.Lock()
         self.name = None
+        self.path = None          # source .py path, relative to the repo root
         self.version = 0          # bumped on every rebuild, good or bad
         self.animation = None     # last animation that built cleanly
         self.error = None         # traceback string, or None
@@ -127,11 +129,12 @@ class Build(object):
     def rebuild(self, name):
         """Re-read `name` from disk and build it. Never raises."""
         started = time.time()
-        animation, error = None, None
+        animation, error, path = None, None, None
         try:
             pkg = package_of(name)
             if pkg is None:
                 raise ValueError("no such animal or feeling: %r" % name)
+            path = os.path.relpath(pkg.path_of(name), REPO_ROOT).replace(os.sep, "/")
             animation = pkg.build(name)   # each build() resets its own cache
         except Exception:
             error = traceback.format_exc()
@@ -143,12 +146,14 @@ class Build(object):
             self.ms = (time.time() - started) * 1000.0
             if animation is not None:
                 self.animation = animation
+                self.path = path
         return error is None
 
     def state(self):
         with self.lock:
             return {
                 "name": self.name,
+                "path": self.path,
                 "version": self.version,
                 "error": self.error,
                 "ms": round(self.ms, 1),

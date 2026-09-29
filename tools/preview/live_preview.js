@@ -69,7 +69,7 @@ async function refresh(state) {
   const data = await (await fetch("/api/animation?name=" + state.name)).json();
   current = state.name;
   pick.value = state.name;
-  document.getElementById("path").textContent = "tools/critters/" + state.name + ".py";
+  document.getElementById("path").textContent = state.path || state.name;
   sourceData = data;
   workingData = JSON.parse(JSON.stringify(data));
   dirty = false;
