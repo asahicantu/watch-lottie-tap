@@ -16,7 +16,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,7 +56,9 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.crittertap.audio.CritterVoice
 import com.example.crittertap.data.Critter
+import com.example.crittertap.data.CritterCatalog
 import com.example.crittertap.data.CritterText
+import com.example.crittertap.data.CritterTexts
 import com.example.crittertap.data.Language
 import com.example.crittertap.data.UiStrings
 import com.example.crittertap.data.UiText
@@ -72,7 +73,7 @@ private const val ROTARY_STEP_PIXELS = 90f
  * still clears the name underneath on the smallest round Wear screen (396 px)
  * as well as the 454 px one.
  */
-private const val ANIMATION_FRACTION = 0.52f
+private const val ANIMATION_FRACTION = 0.82f
 private val HINT_LINE_HEIGHT = 22.dp
 
 /**
@@ -103,12 +104,46 @@ fun PlayScreen(
     voiceStatus: CritterVoice.Status = CritterVoice.Status.Ready,
     viewModel: PlayViewModel
 ) {
-    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    // Introduce whatever is on screen when the player arrives, and again if the
+    // language changes underneath them.
+    LaunchedEffect(language) {
+        viewModel.onLanguageChanged(language)
+        val currentState = viewModel.uiState.value
+        onCritterShown(currentState.critter, currentState.text)
+    }
+
+    PlayScreen(
+        uiState = uiState,
+        strings = strings,
+        onSpeak = { viewModel.onSpeakTriggered(onCritterPoked) },
+        onNext = { viewModel.onNextCritterTriggered(onCritterShown) },
+        onRotaryScroll = { steps -> viewModel.onRotaryScroll(steps, onCritterShown) },
+        modifier = modifier,
+        voiceStatus = voiceStatus,
+    )
+}
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun PlayScreen(
+    uiState: PlayUiState,
+    strings: UiStrings,
+    onSpeak: () -> Unit,
+    onNext: () -> Unit,
+    onRotaryScroll: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    voiceStatus: CritterVoice.Status = CritterVoice.Status.Ready,
+) {
+    val context = LocalContext.current
     val haptics = remember(context) { CritterHaptics(context) }
     val focusRequester = remember { FocusRequester() }
     var rotaryAccumulator by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(Unit) {
+        runCatching { focusRequester.requestFocus() }
+    }
 
     fun openAudioSettings() {
         val intent = when (voiceStatus) {
@@ -124,21 +159,12 @@ fun PlayScreen(
 
     fun speak() {
         haptics.poke()
-        viewModel.onSpeakTriggered(onCritterPoked)
+        onSpeak()
     }
 
     fun next() {
         haptics.arrive()
-        viewModel.onNextCritterTriggered(onCritterShown)
-    }
-
-    // Introduce whatever is on screen when the player arrives, and again if the
-    // language changes underneath them.
-    LaunchedEffect(language) {
-        viewModel.onLanguageChanged(language)
-        val currentState = viewModel.uiState.value
-        onCritterShown(currentState.critter, currentState.text)
-        runCatching { focusRequester.requestFocus() }
+        onNext()
     }
 
     Box(
@@ -151,7 +177,7 @@ fun PlayScreen(
                 if (steps != 0) {
                     rotaryAccumulator -= steps * ROTARY_STEP_PIXELS
                     haptics.arrive()
-                    viewModel.onRotaryScroll(steps, onCritterShown)
+                    onRotaryScroll(steps)
                 }
                 true
             }
@@ -251,6 +277,16 @@ private fun CritterStage(
     val contentDescription = "${text.label}: ${text.description}"
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .padding(start = 26.dp, end = 26.dp, top = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            HintLine(hint)
+        }
+
         LottieAnimation(
             composition = composition,
             progress = { progress },
@@ -264,15 +300,15 @@ private fun CritterStage(
             trigger = reaction,
             color = critter.accent,
             modifier = Modifier
-                .fillMaxWidth(ANIMATION_FRACTION * 1.5f)
+                .fillMaxWidth((ANIMATION_FRACTION * 1.3f).coerceAtMost(1f))
                 .aspectRatio(1f),
         )
-        Column(
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(start = 26.dp, end = 26.dp, bottom = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = text.label,
@@ -282,9 +318,6 @@ private fun CritterStage(
                 textAlign = TextAlign.Center,
                 maxLines = 1,
             )
-            // Fading the colour rather than the composable keeps the line's
-            // height reserved, so the name never jumps when the hint retires.
-            HintLine(hint)
         }
     }
 }
@@ -313,13 +346,20 @@ private fun HintLine(hint: String?) {
 @Preview(device = WearDevices.LARGE_ROUND, showSystemUi = true)
 @Composable
 private fun PlayScreenPreview() {
+    val sampleCritter = CritterCatalog.all.first()
+    val sampleText = CritterTexts.of(sampleCritter.id, Language.ENGLISH)
     CritterTapTheme {
         PlayScreen(
-            language = Language.ENGLISH,
+            uiState = PlayUiState(
+                critter = sampleCritter,
+                text = sampleText,
+                interactions = 0,
+                index = 0,
+            ),
             strings = UiText.of(Language.ENGLISH),
-            onCritterShown = { _, _ -> },
-            onCritterPoked = { _, _ -> },
-            viewModel = viewModel(factory = PlayViewModel.factory(10, ShufflingMode.Random))
+            onSpeak = {},
+            onNext = {},
+            onRotaryScroll = {},
         )
     }
 }
